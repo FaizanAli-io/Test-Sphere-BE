@@ -1,15 +1,198 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client-js"
-  output   = "../generated/prisma"
+  provider        = "prisma-client-js"
+  output          = "../generated/prisma"
+  previewFeatures = ["fullTextSearchPostgres"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model User {
+  id               Int       @id @default(autoincrement())
+  email            String    @unique
+  password         String
+  role             UserRole
+  name             String
+  uniqueIdentifier String    @unique @map("unique_identifier") @db.VarChar(20)
+  otp              String?   @db.VarChar(6)
+  otpExpiry        DateTime?
+  otpLastAttempt   DateTime?
+  otpAttempts      Int       @default(0)
+
+  // Relations
+  teacherClasses  Class[]                @relation("TeacherClasses")
+  studentClasses  StudentClassRelation[]
+  testSubmissions TestSubmission[]
+  testPhotos      TestPhoto[]
+  testAnswers     TestAnswer[]
+  answerMarks     AnswerMark[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  teacher
+  student
+}
+
+model Class {
+  id        Int    @id @default(autoincrement()) @map("class_id")
+  name      String @map("class_name") @db.VarChar(255)
+  teacherId Int?   @map("teacher_id")
+  classCode String @unique @map("class_code") @db.VarChar(10)
+
+  // Relations
+  teacher         User?                  @relation("TeacherClasses", fields: [teacherId], references: [id], onDelete: Cascade)
+  students        StudentClassRelation[]
+  tests           Test[]
+  testSubmissions TestSubmission[]
+
+  @@map("classes")
+}
+
+model StudentClassRelation {
+  studentId Int @map("student_id")
+  classId   Int @map("class_id")
+
+  // Relations
+  student User  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class   Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@id([studentId, classId])
+  @@map("student_class_relations")
+}
+
+model Test {
+  id          Int       @id @default(autoincrement()) @map("test_id")
+  classId     Int?      @map("class_id")
+  title       String    @db.VarChar(255)
+  description String
+  date        DateTime
+  duration    Int
+  disableTime DateTime? @map("disable_time")
+
+  // Relations
+  class           Class?           @relation(fields: [classId], references: [id], onDelete: Cascade)
+  questions       Question[]
+  testSubmissions TestSubmission[]
+  testPhotos      TestPhoto[]
+  testAnswers     TestAnswer[]
+  answerMarks     AnswerMark[]
+
+  @@map("tests")
+}
+
+model Question {
+  id      Int      @id @default(autoincrement()) @map("question_id")
+  testId  Int?     @map("test_id")
+  text    String   @db.VarChar(255)
+  type    String   @db.VarChar(50)
+  options String[]
+  image   String?
+  answer  String?
+  marks   Int      @default(0)
+
+  // Relations
+  test        Test?        @relation(fields: [testId], references: [id])
+  testAnswers TestAnswer[]
+  answerMarks AnswerMark[]
+
+  @@map("questions")
+}
+
+model TestSubmission {
+  id                   Int      @id @default(autoincrement())
+  userId               Int      @map("user_id")
+  testId               Int      @map("test_id")
+  classId              Int?     @map("class_id")
+  submittedAt          DateTime @default(now()) @map("submitted_at")
+  startTime            DateTime @map("start_time")
+  answersSubmitted     Boolean  @default(false) @map("answers_submitted")
+  photosSubmitted      Boolean  @default(false) @map("photos_submitted")
+  screenshotsSubmitted Boolean  @default(false) @map("screenshots_submitted")
+
+  // Relations
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  test         Test          @relation(fields: [testId], references: [id], onDelete: Cascade)
+  class        Class?        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  activityLogs ActivityLog[]
+  testAnswers  TestAnswer[]
+  testPhotos   TestPhoto[]
+
+  @@unique([userId, testId])
+  @@unique([userId, testId, classId])
+  @@map("test_submission")
+}
+
+model TestAnswer {
+  id            Int     @id @default(autoincrement()) @map("answer_id")
+  studentId     Int?    @map("student_id")
+  questionId    Int?    @map("question_id")
+  answer        String?
+  testId        Int?    @map("test_id")
+  score         Int?
+  obtainedMarks Int?    @map("obtained_marks")
+  totalMarks    Int?    @map("total_marks")
+
+  // Relations
+  student        User?           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  question       Question?       @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  test           Test?           @relation(fields: [testId], references: [id], onDelete: Cascade)
+  testSubmission TestSubmission? @relation(fields: [studentId, testId], references: [userId, testId], onDelete: Cascade)
+
+  @@unique([testId, questionId, studentId])
+  @@map("test_answers")
+}
+
+model TestPhoto {
+  id          Int       @id @default(autoincrement()) @map("photo_id")
+  userId      Int       @map("user_id")
+  testId      Int       @map("test_id")
+  timestamp   DateTime?
+  photos      Bytes[]
+  screenshots Bytes[]
+
+  // Relations
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  test           Test           @relation(fields: [testId], references: [id], onDelete: Cascade)
+  testSubmission TestSubmission @relation(fields: [userId, testId], references: [userId, testId], onDelete: Cascade)
+
+  @@unique([userId, testId])
+  @@map("test_photos")
+}
+
+model ActivityLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  testId    Int      @map("test_id")
+  classId   Int      @map("class_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  logs      Json?
+
+  // Relations
+  testSubmission TestSubmission @relation(fields: [userId, testId], references: [userId, testId], onDelete: Cascade)
+
+  @@map("activity_logs")
+}
+
+model AnswerMark {
+  id            Int  @id @default(autoincrement())
+  testId        Int  @map("test_id")
+  studentId     Int  @map("student_id")
+  questionId    Int  @map("question_id")
+  obtainedMarks Int? @map("obtained_marks")
+  totalMarks    Int? @map("total_marks")
+
+  // Relations
+  test     Test     @relation(fields: [testId], references: [id])
+  student  User     @relation(fields: [studentId], references: [id])
+  question Question @relation(fields: [questionId], references: [id])
+
+  @@unique([testId, studentId, questionId])
+  @@map("answer_marks")
 }

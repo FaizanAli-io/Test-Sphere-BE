@@ -1,6 +1,16 @@
 # Test-Sphere-BE
 
-### The Backend Repo of the Test Sphere FYP of Faizan Ali, Zaid Vohra, and Hamail Rehman
+### A Backend Service for Test Sphere - An AI-Powered Test Management System
+
+## Team Members
+
+- Faizan Ali (22I-2496)
+- Zaid Vohra (22K-4195)
+- Hamail Rehman (22K-4443)
+
+## API Documentation
+
+Our API documentation is available at [/api](http://localhost:3000/api) when the server is running.
 
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>

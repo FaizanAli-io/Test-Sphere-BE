@@ -4,6 +4,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { OtpModule } from './otp/otp.module';
 import { ClassModule } from './class/class.module';
+import { TestModule } from './test/test.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -16,6 +17,7 @@ import { AppService } from './app.service';
     AuthModule,
     OtpModule,
     ClassModule,
+    TestModule,
   ],
   controllers: [AppController],
   providers: [AppService],

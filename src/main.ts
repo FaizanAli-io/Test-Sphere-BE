@@ -22,15 +22,7 @@ async function bootstrap() {
       'API Documentation for Test Sphere - An AI-Powered Test Management System',
     )
     .setVersion('1.0')
-    .addBearerAuth(
-      {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'JWT',
-        in: 'header',
-      },
-      'access-token',
-    )
+    .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);

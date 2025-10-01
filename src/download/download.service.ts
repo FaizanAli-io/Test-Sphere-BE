@@ -149,11 +149,14 @@ export class DownloadService {
 
     // Get user information for each log
     const userIds = [...new Set(activityLogs.map((log) => log.userId))];
+
     const users = await this.prisma.user.findMany({
       where: { id: { in: userIds } },
       select: { id: true, name: true, email: true },
     });
-    const userMap = new Map(users.map((u) => [u.id, u]));
+
+    const userMap: Map<number, { id: number; name: string; email: string }> =
+      new Map(users.map((u) => [u.id, u]));
 
     if (!test) {
       throw new NotFoundException('Test not found');

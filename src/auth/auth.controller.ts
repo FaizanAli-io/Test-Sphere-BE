@@ -37,4 +37,26 @@ export class AuthController {
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
   }
+
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Send password reset OTP' })
+  @ApiResponse({ status: 200, description: 'OTP sent successfully.' })
+  async forgotPassword(@Body() data: { email: string }) {
+    return this.authService.forgotPassword(data.email);
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reset password with OTP' })
+  @ApiResponse({ status: 200, description: 'Password reset successfully.' })
+  async resetPassword(
+    @Body() data: { email: string; otp: string; newPassword: string },
+  ) {
+    return this.authService.resetPassword(
+      data.email,
+      data.otp,
+      data.newPassword,
+    );
+  }
 }

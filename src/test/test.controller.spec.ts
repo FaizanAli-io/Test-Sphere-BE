@@ -1,7 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TestController } from './test.controller';
 import { TestService } from './test.service';
-import { CreateTestDto } from './dto/test.dto';
+import {
+  CreateTestDto,
+  SubmitQuestionsDto,
+  EditTestDto,
+  QuestionType,
+} from './dto/test.dto';
 import {
   StartTestDto,
   SubmitTestDto,
@@ -20,6 +25,10 @@ describe('TestController', () => {
     submitTest: jest.fn(),
     submitPhotos: jest.fn(),
     gradeSubmission: jest.fn(),
+    submitQuestions: jest.fn(),
+    getTestsByClass: jest.fn(),
+    editTest: jest.fn(),
+    deleteTest: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -201,6 +210,114 @@ describe('TestController', () => {
         userId,
         gradeSubmissionDto,
       );
+    });
+  });
+
+  describe('submitQuestions', () => {
+    it('should submit questions', async () => {
+      const submitQuestionsDto = {
+        questions: [
+          {
+            testId: 1,
+            text: 'What is 2+2?',
+            type: QuestionType.MULTIPLE_CHOICE,
+            options: ['3', '4', '5', '6'],
+            answer: '4',
+            points: 5,
+          },
+        ],
+      };
+
+      const userId = 1;
+
+      const expectedResult = {
+        message: 'All questions submitted successfully!',
+      };
+
+      mockTestService.submitQuestions.mockResolvedValue(expectedResult);
+
+      const result = await controller.submitQuestions(
+        userId,
+        submitQuestionsDto,
+      );
+
+      expect(result).toBe(expectedResult);
+      expect(mockTestService.submitQuestions).toHaveBeenCalledWith(
+        userId,
+        submitQuestionsDto,
+      );
+    });
+  });
+
+  describe('getTestsByClass', () => {
+    it('should get tests by class', async () => {
+      const classId = 1;
+      const userId = 1;
+
+      const expectedResult = [
+        {
+          id: 1,
+          title: 'Test 1',
+          description: 'Description 1',
+          questions: [],
+        },
+      ];
+
+      mockTestService.getTestsByClass.mockResolvedValue(expectedResult);
+
+      const result = await controller.getTestsByClass(userId, classId);
+
+      expect(result).toBe(expectedResult);
+      expect(mockTestService.getTestsByClass).toHaveBeenCalledWith(
+        userId,
+        classId,
+      );
+    });
+  });
+
+  describe('editTest', () => {
+    it('should edit test', async () => {
+      const testId = 1;
+      const userId = 1;
+      const editTestDto = {
+        title: 'Updated Test',
+        description: 'Updated Description',
+        duration: 90,
+        questions: [],
+      };
+
+      const expectedResult = {
+        message: 'Test and questions updated successfully!',
+      };
+
+      mockTestService.editTest.mockResolvedValue(expectedResult);
+
+      const result = await controller.editTest(userId, testId, editTestDto);
+
+      expect(result).toBe(expectedResult);
+      expect(mockTestService.editTest).toHaveBeenCalledWith(
+        userId,
+        testId,
+        editTestDto,
+      );
+    });
+  });
+
+  describe('deleteTest', () => {
+    it('should delete test', async () => {
+      const testId = 1;
+      const userId = 1;
+
+      const expectedResult = {
+        message: 'Test and associated questions deleted successfully.',
+      };
+
+      mockTestService.deleteTest.mockResolvedValue(expectedResult);
+
+      const result = await controller.deleteTest(userId, testId);
+
+      expect(result).toBe(expectedResult);
+      expect(mockTestService.deleteTest).toHaveBeenCalledWith(userId, testId);
     });
   });
 });

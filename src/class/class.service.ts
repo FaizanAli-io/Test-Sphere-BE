@@ -238,6 +238,87 @@ export class ClassService {
     });
   }
 
+  async enrollInClass(studentId: number, classCode: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: studentId },
+      select: { role: true },
+    });
+
+    if (!user || user.role !== UserRole.student) {
+      throw new ForbiddenException('Only students can enroll in classes');
+    }
+
+    if (!classCode) {
+      throw new NotFoundException('Class code is required');
+    }
+
+    const classToJoin = await this.prisma.class.findFirst({
+      where: { classCode },
+      select: { id: true, name: true },
+    });
+
+    if (!classToJoin) {
+      throw new NotFoundException('Class not found');
+    }
+
+    // Check if student is already enrolled
+    const existingRelation = await this.prisma.studentClassRelation.findUnique({
+      where: {
+        studentId_classId: {
+          studentId,
+          classId: classToJoin.id,
+        },
+      },
+    });
+
+    if (existingRelation) {
+      throw new ConflictException('You are already enrolled in this class');
+    }
+
+    await this.prisma.studentClassRelation.create({
+      data: {
+        studentId,
+        classId: classToJoin.id,
+      },
+    });
+
+    return {
+      message: 'Successfully enrolled in class!',
+      class: {
+        classId: classToJoin.id,
+        className: classToJoin.name,
+      },
+    };
+  }
+
+  async getEnrolledClasses(studentId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: studentId },
+      select: { role: true },
+    });
+
+    if (!user || user.role !== UserRole.student) {
+      throw new ForbiddenException('Only students can view enrolled classes');
+    }
+
+    const enrolledClasses = await this.prisma.studentClassRelation.findMany({
+      where: { studentId },
+      include: {
+        class: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    return enrolledClasses.map((relation) => ({
+      classId: relation.class.id,
+      className: relation.class.name,
+    }));
+  }
+
   async leaveClass(studentId: number, classId: number) {
     const user = await this.prisma.user.findUnique({
       where: { id: studentId },

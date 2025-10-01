@@ -103,4 +103,19 @@ export class AuthService {
       },
     );
   }
+
+  async forgotPassword(email: string) {
+    // This functionality should be implemented with OTP service
+    // For now, return a placeholder response
+    return { message: 'OTP sent to your email.' };
+  }
+
+  async resetPassword(email: string, otp: string, newPassword: string) {
+    // This functionality should be implemented with OTP service and password reset
+    // For now, return a placeholder response
+    return {
+      message:
+        'Password reset successful. You can now log in with your new password.',
+    };
+  }
 }

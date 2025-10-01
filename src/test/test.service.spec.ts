@@ -17,6 +17,9 @@ describe('TestService', () => {
       create: jest.fn(),
       findUnique: jest.fn(),
       findFirst: jest.fn(),
+      findMany: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
     },
     class: {
       findFirst: jest.fn(),
@@ -24,6 +27,9 @@ describe('TestService', () => {
     question: {
       createMany: jest.fn(),
       findUnique: jest.fn(),
+      update: jest.fn(),
+      create: jest.fn(),
+      deleteMany: jest.fn(),
     },
     testSubmission: {
       findUnique: jest.fn(),
@@ -300,6 +306,239 @@ describe('TestService', () => {
       await expect(
         service.gradeSubmission(teacherId, gradeDto),
       ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('submitQuestions', () => {
+    const userId = 1;
+    const submitQuestionsDto = {
+      questions: [
+        {
+          testId: 1,
+          text: 'What is 2+2?',
+          type: 'MULTIPLE_CHOICE' as const,
+          options: ['3', '4', '5', '6'],
+          answer: '4',
+          points: 5,
+        },
+        {
+          testId: 1,
+          text: 'The earth is round',
+          type: 'TRUE_FALSE' as const,
+          options: [],
+          answer: 'true',
+          points: 3,
+        },
+      ],
+    };
+
+    it('should submit questions successfully when user is teacher', async () => {
+      mockPrismaService.test.findUnique.mockResolvedValue({
+        id: 1,
+        classId: 1,
+        class: { teacherId: userId },
+      });
+
+      mockPrismaService.question.createMany.mockResolvedValue({ count: 2 });
+
+      const result = await service.submitQuestions(userId, submitQuestionsDto);
+
+      expect(result).toEqual({
+        message: 'All questions submitted successfully!',
+      });
+      expect(mockPrismaService.question.createMany).toHaveBeenCalledWith({
+        data: submitQuestionsDto.questions.map((q) => ({
+          testId: q.testId,
+          text: q.text,
+          type: q.type,
+          options: q.options,
+          image: q.image || null,
+          answer: q.answer,
+          marks: q.points,
+        })),
+      });
+    });
+
+    it('should throw ForbiddenException when user is not the teacher', async () => {
+      mockPrismaService.test.findUnique.mockResolvedValue({
+        id: 1,
+        classId: 1,
+        class: { teacherId: 999 }, // Different teacher
+      });
+
+      await expect(
+        service.submitQuestions(userId, submitQuestionsDto),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should throw NotFoundException when test does not exist', async () => {
+      mockPrismaService.test.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.submitQuestions(userId, submitQuestionsDto),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('getTestsByClass', () => {
+    const userId = 1;
+    const classId = 1;
+
+    it('should return tests with questions for authorized user', async () => {
+      const mockTests = [
+        {
+          id: 1,
+          title: 'Test 1',
+          description: 'Description 1',
+          date: new Date(),
+          duration: 60,
+          classId,
+          questions: [{ id: 1, text: 'Question 1', type: 'MULTIPLE_CHOICE' }],
+        },
+      ];
+
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: userId,
+        role: 'teacher',
+        teacherClasses: [{ id: classId }],
+      });
+
+      mockPrismaService.test.findMany.mockResolvedValue(mockTests);
+
+      const result = await service.getTestsByClass(userId, classId);
+
+      expect(result).toEqual(mockTests);
+      expect(mockPrismaService.test.findMany).toHaveBeenCalledWith({
+        where: { classId },
+        include: {
+          questions: true,
+        },
+      });
+    });
+
+    it('should throw ForbiddenException when user has no access to class', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: userId,
+        role: 'student',
+        studentClasses: [], // No access to this class
+      });
+
+      await expect(service.getTestsByClass(userId, classId)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+  });
+
+  describe('editTest', () => {
+    const userId = 1;
+    const testId = 1;
+    const editTestDto = {
+      title: 'Updated Test',
+      description: 'Updated Description',
+      duration: 90,
+      questions: [
+        {
+          id: 1,
+          text: 'Updated Question',
+          type: 'MULTIPLE_CHOICE' as const,
+          points: 10,
+        },
+        {
+          text: 'New Question',
+          type: 'TRUE_FALSE' as const,
+          points: 5,
+        },
+      ],
+    };
+
+    it('should edit test successfully when user is teacher', async () => {
+      mockPrismaService.test.findUnique.mockResolvedValue({
+        id: testId,
+        classId: 1,
+        class: { teacherId: userId },
+      });
+
+      mockPrismaService.test.update.mockResolvedValue({
+        id: testId,
+        ...editTestDto,
+      });
+
+      mockPrismaService.question.update.mockResolvedValue({});
+      mockPrismaService.question.create.mockResolvedValue({});
+
+      const result = await service.editTest(userId, testId, editTestDto);
+
+      expect(result).toEqual({
+        message: 'Test and questions updated successfully!',
+      });
+      expect(mockPrismaService.test.update).toHaveBeenCalledWith({
+        where: { id: testId },
+        data: {
+          title: editTestDto.title,
+          description: editTestDto.description,
+          duration: editTestDto.duration,
+        },
+      });
+    });
+
+    it('should throw ForbiddenException when user is not the teacher', async () => {
+      mockPrismaService.test.findUnique.mockResolvedValue({
+        id: testId,
+        classId: 1,
+        class: { teacherId: 999 }, // Different teacher
+      });
+
+      await expect(
+        service.editTest(userId, testId, editTestDto),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('deleteTest', () => {
+    const userId = 1;
+    const testId = 1;
+
+    it('should delete test successfully when user is teacher', async () => {
+      mockPrismaService.test.findUnique.mockResolvedValue({
+        id: testId,
+        classId: 1,
+        class: { teacherId: userId },
+      });
+
+      mockPrismaService.question.deleteMany.mockResolvedValue({ count: 5 });
+      mockPrismaService.test.delete.mockResolvedValue({});
+
+      const result = await service.deleteTest(userId, testId);
+
+      expect(result).toEqual({
+        message: 'Test and associated questions deleted successfully.',
+      });
+      expect(mockPrismaService.question.deleteMany).toHaveBeenCalledWith({
+        where: { testId },
+      });
+      expect(mockPrismaService.test.delete).toHaveBeenCalledWith({
+        where: { id: testId },
+      });
+    });
+
+    it('should throw ForbiddenException when user is not the teacher', async () => {
+      mockPrismaService.test.findUnique.mockResolvedValue({
+        id: testId,
+        classId: 1,
+        class: { teacherId: 999 }, // Different teacher
+      });
+
+      await expect(service.deleteTest(userId, testId)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('should throw NotFoundException when test does not exist', async () => {
+      mockPrismaService.test.findUnique.mockResolvedValue(null);
+
+      await expect(service.deleteTest(userId, testId)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

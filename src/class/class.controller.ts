@@ -8,6 +8,7 @@ import {
   UseGuards,
   Patch,
   ParseIntPipe,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -126,5 +127,86 @@ export class ClassController {
     @Param('id', ParseIntPipe) classId: number,
   ) {
     return this.classService.leaveClass(userId, classId);
+  }
+}
+
+@ApiTags('Enrollment')
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
+@Controller('api')
+export class EnrollmentController {
+  constructor(private readonly classService: ClassService) {}
+
+  @Post('enroll')
+  @ApiOperation({ summary: 'Enroll in a class using class code' })
+  @ApiResponse({
+    status: 201,
+    description: 'Successfully enrolled in class',
+    schema: {
+      type: 'object',
+      properties: {
+        message: { type: 'string' },
+        class: {
+          type: 'object',
+          properties: {
+            classId: { type: 'number' },
+            className: { type: 'string' },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 400, description: 'Class code is required' })
+  @ApiResponse({
+    status: 403,
+    description: 'Only students can enroll in classes',
+  })
+  @ApiResponse({ status: 404, description: 'Class not found' })
+  @ApiResponse({ status: 409, description: 'Already enrolled in this class' })
+  async enrollInClass(
+    @User('id') userId: number,
+    @Body() body: { classCode: string },
+  ) {
+    return this.classService.enrollInClass(userId, body.classCode);
+  }
+
+  @Get('classes')
+  @ApiOperation({ summary: 'Get student enrolled classes' })
+  @ApiResponse({
+    status: 200,
+    description: 'Enrolled classes retrieved successfully',
+    schema: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          classId: { type: 'number' },
+          className: { type: 'string' },
+        },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Only students can view enrolled classes',
+  })
+  async getEnrolledClasses(@User('id') userId: number) {
+    return this.classService.getEnrolledClasses(userId);
+  }
+
+  @Post('leave-class')
+  @ApiOperation({ summary: 'Leave a class' })
+  @ApiResponse({ status: 200, description: 'Successfully left the class' })
+  @ApiResponse({ status: 400, description: 'Class ID is required' })
+  @ApiResponse({ status: 403, description: 'Only students can leave classes' })
+  @ApiResponse({ status: 404, description: 'Class not found or not enrolled' })
+  async leaveClassByBody(
+    @User('id') userId: number,
+    @Body() body: { classId: number },
+  ) {
+    if (!body.classId) {
+      throw new BadRequestException('Class ID is required to leave the class');
+    }
+    return this.classService.leaveClass(userId, body.classId);
   }
 }

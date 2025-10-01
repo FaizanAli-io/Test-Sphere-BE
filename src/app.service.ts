@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import { PrismaService } from './prisma/prisma.service';
 
 @Injectable()
 export class AppService {
+  constructor(private prisma: PrismaService) {}
   getHello(): string {
     return `
       <!DOCTYPE html>
@@ -138,5 +140,23 @@ export class AppService {
       </body>
       </html>
     `;
+  }
+
+  async healthCheck() {
+    try {
+      // Test database connection
+      await this.prisma.$queryRaw`SELECT 1`;
+
+      return {
+        status: 'OK',
+        message: 'API is healthy!',
+      };
+    } catch (error) {
+      console.error('Health check failed:', error);
+      return {
+        status: 'ERROR',
+        message: 'API is not healthy.',
+      };
+    }
   }
 }

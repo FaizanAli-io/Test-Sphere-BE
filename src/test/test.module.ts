@@ -22,5 +22,6 @@ import { extname } from 'path';
   ],
   controllers: [TestController],
   providers: [TestService],
+  exports: [TestService],
 })
 export class TestModule {}

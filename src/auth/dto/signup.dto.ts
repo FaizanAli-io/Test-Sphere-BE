@@ -1,5 +1,5 @@
+import { UserRole } from '@prisma/client';
 import { ApiProperty } from '@nestjs/swagger';
-import { UserRole } from '../../../generated/prisma';
 import { IsEmail, IsEnum, IsString, MinLength, Matches } from 'class-validator';
 
 export class SignupDto {

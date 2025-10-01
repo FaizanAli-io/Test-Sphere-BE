@@ -3,7 +3,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
-import { UserRole } from '../../generated/prisma';
+import { UserRole } from '@prisma/client';
 
 describe('AuthController', () => {
   let controller: AuthController;

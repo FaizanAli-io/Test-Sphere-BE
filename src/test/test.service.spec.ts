@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TestService } from './test.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { UserRole } from '../../generated/prisma';
+import { UserRole } from '@prisma/client';
 import {
   ForbiddenException,
   NotFoundException,

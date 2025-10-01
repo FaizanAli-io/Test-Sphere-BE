@@ -11,7 +11,7 @@ jest.mock('bcrypt', () => ({
 }));
 import * as bcrypt from 'bcrypt';
 
-import { UserRole } from '../../generated/prisma';
+import { UserRole } from '@prisma/client';
 
 describe('AuthService', () => {
   let service: AuthService;

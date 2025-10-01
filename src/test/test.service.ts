@@ -17,7 +17,7 @@ import {
   SubmitTestPhotosDto,
   GradeSubmissionDto,
 } from './dto/test-submission.dto';
-import { UserRole } from '../../generated/prisma';
+import { UserRole } from '@prisma/client';
 
 @Injectable()
 export class TestService {

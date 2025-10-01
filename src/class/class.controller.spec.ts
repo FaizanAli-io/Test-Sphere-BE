@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ClassController } from './class.controller';
 import { ClassService } from './class.service';
-import { UserRole } from '../../generated/prisma';
+import { UserRole } from '@prisma/client';
 
 describe('ClassController', () => {
   let controller: ClassController;

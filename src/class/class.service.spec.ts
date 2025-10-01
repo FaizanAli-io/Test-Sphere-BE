@@ -6,7 +6,7 @@ import {
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
-import { UserRole } from '../../generated/prisma';
+import { UserRole } from '@prisma/client';
 
 describe('ClassService', () => {
   let service: ClassService;

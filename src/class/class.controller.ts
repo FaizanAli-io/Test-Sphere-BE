@@ -109,4 +109,22 @@ export class ClassController {
     await this.classService.deleteClass(userId, classId);
     return { message: 'Class deleted successfully' };
   }
+
+  @Delete(':id/leave')
+  @ApiOperation({ summary: 'Leave a class as a student' })
+  @ApiResponse({ status: 200, description: 'Successfully left the class.' })
+  @ApiResponse({
+    status: 403,
+    description: 'Only students can leave classes.',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Class not found or student not enrolled.',
+  })
+  async leaveClass(
+    @User('id') userId: number,
+    @Param('id', ParseIntPipe) classId: number,
+  ) {
+    return this.classService.leaveClass(userId, classId);
+  }
 }

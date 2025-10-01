@@ -1,13 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { ConfigService } from '@nestjs/config';
-import * as nodemailer from 'nodemailer';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class OtpService {
   constructor(
     private prisma: PrismaService,
-    private configService: ConfigService,
+    private emailService: EmailService,
   ) {}
 
   async generateOtp(): Promise<string> {
@@ -28,22 +27,7 @@ export class OtpService {
   }
 
   async sendOtpEmail(email: string, otp: string): Promise<void> {
-    const transporter = nodemailer.createTransport({
-      host: this.configService.get('EMAIL_HOST'),
-      port: this.configService.get('EMAIL_PORT'),
-      secure: true,
-      auth: {
-        user: this.configService.get('EMAIL_USER'),
-        pass: this.configService.get('EMAIL_PASSWORD'),
-      },
-    });
-
-    await transporter.sendMail({
-      from: this.configService.get('EMAIL_USER'),
-      to: email,
-      subject: 'Account Verification OTP',
-      text: `Your OTP for account verification is: ${otp}. This OTP is valid for 10 minutes.`,
-    });
+    await this.emailService.sendOtpEmail(email, otp);
   }
 
   async verifyOtp(email: string, code: string): Promise<boolean> {

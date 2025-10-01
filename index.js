@@ -1,25 +1,23 @@
-const bcrypt = require('bcrypt');
+const fs = require('fs');
+const pkg = require('pg');
 const cors = require('cors');
-const csv = require('csv-parser');
+const JSZip = require('jszip');
+const bcrypt = require('bcrypt');
 const dotenv = require('dotenv');
+const multer = require('multer');
+const OpenAI = require('openai');
+const csv = require('csv-parser');
 const ExcelJS = require('exceljs');
 const express = require('express');
-const fs = require('fs');
-const JSZip = require('jszip');
 const jwt = require('jsonwebtoken');
-const multer = require('multer');
-const nodemailer = require('nodemailer');
-const OpenAI = require('openai');
 const pdfParse = require('pdf-parse');
-const pkg = require('pg');
-
-const upload = multer({ dest: 'uploads/' });
+const nodemailer = require('nodemailer');
 
 dotenv.config();
-
 const { Pool } = pkg;
 const app = express();
 const PORT = process.env.PORT || 5000;
+const upload = multer({ dest: 'uploads/' });
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
@@ -28,9 +26,9 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 const pool = new Pool({
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
   database: process.env.DB_NAME,
   password: process.env.DB_PASSWORD,
-  port: process.env.DB_PORT,
 });
 
 pool.connect((err) => {
@@ -212,9 +210,11 @@ app.post('/api/verifysignupotp', async (req, res) => {
 
       if (storedOtp.attempts >= 3) {
         signupOtps.delete(email);
-        return res.status(400).json({
-          error: 'Maximum attempts reached. Please request a new OTP.',
-        });
+        return res
+          .status(400)
+          .json({
+            error: 'Maximum attempts reached. Please request a new OTP.',
+          });
       }
 
       return res.status(400).json({ error: 'Invalid OTP. Please try again.' });
@@ -425,10 +425,12 @@ app.delete(
       );
 
       if (classResult.rows.length === 0) {
-        return res.status(404).json({
-          error:
-            'Class not found or you do not have permission to delete this class.',
-        });
+        return res
+          .status(404)
+          .json({
+            error:
+              'Class not found or you do not have permission to delete this class.',
+          });
       }
 
       await client.query('DELETE FROM classes WHERE class_id = $1', [classId]);
@@ -655,9 +657,11 @@ app.put('/api/edit-test/:testId', authenticateToken, async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error updating test:', error);
-    res.status(500).json({
-      error: 'An error occurred while updating the test and questions.',
-    });
+    res
+      .status(500)
+      .json({
+        error: 'An error occurred while updating the test and questions.',
+      });
   } finally {
     client.release();
   }
@@ -706,7 +710,7 @@ app.delete('/api/delete-test/:testId', authenticateToken, async (req, res) => {
 });
 
 const client = new OpenAI({
-  baseURL: 'https://api.openai.com/v1', // or whatever your actual base URL is
+  baseURL: 'https://openrouter.ai/api/v1',
   apiKey: process.env.OPENROUTER_API_KEY,
 });
 
@@ -1123,9 +1127,11 @@ function extractAnswer(lines) {
 
 app.get('/api/dashboard', authenticateToken, async (req, res) => {
   if (req.user.role !== 'student') {
-    return res.status(403).json({
-      error: 'Access denied. Only students can access the dashboard.',
-    });
+    return res
+      .status(403)
+      .json({
+        error: 'Access denied. Only students can access the dashboard.',
+      });
   }
 
   const studentId = req.user.id;
@@ -1238,9 +1244,11 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
 
 app.get('/api/teacher-dashboard', authenticateToken, async (req, res) => {
   if (req.user.role !== 'teacher') {
-    return res.status(403).json({
-      error: 'Access denied. Only teachers can access this dashboard.',
-    });
+    return res
+      .status(403)
+      .json({
+        error: 'Access denied. Only teachers can access this dashboard.',
+      });
   }
 
   const teacherId = req.user.id;
@@ -1351,6 +1359,8 @@ const getSubmissionPercentage = (test) => {
   return Math.round((test.attempted_students / test.total_students) * 100);
 };
 
+//////////////////////////
+
 app.post('/api/enroll', authenticateToken, async (req, res) => {
   if (req.user.role !== 'student') {
     return res
@@ -1414,9 +1424,11 @@ app.post('/api/enroll', authenticateToken, async (req, res) => {
 
 app.get('/api/classes', authenticateToken, async (req, res) => {
   if (req.user.role !== 'student') {
-    return res.status(403).json({
-      error: 'Access denied. Only students can view enrolled classes.',
-    });
+    return res
+      .status(403)
+      .json({
+        error: 'Access denied. Only students can view enrolled classes.',
+      });
   }
 
   const client = await pool.connect();
@@ -1546,9 +1558,11 @@ app.post('/api/start-test/:testId', authenticateToken, async (req, res) => {
   console.log('Request body (start-test):', req.body);
 
   if (!testId || !studentId || !classId) {
-    return res.status(400).json({
-      message: 'Invalid input: testId, studentId, and classId are required.',
-    });
+    return res
+      .status(400)
+      .json({
+        message: 'Invalid input: testId, studentId, and classId are required.',
+      });
   }
 
   try {
@@ -1567,25 +1581,31 @@ app.post('/api/start-test/:testId', authenticateToken, async (req, res) => {
 
       await client.query('COMMIT');
 
-      res.status(201).json({
-        message: 'Test start time recorded successfully!',
-        data: result.rows[0],
-      });
+      res
+        .status(201)
+        .json({
+          message: 'Test start time recorded successfully!',
+          data: result.rows[0],
+        });
     } catch (queryError) {
       console.error('Database query error (start-test):', queryError);
-      res.status(500).json({
-        message: 'Failed to record test start time.',
-        error: queryError.message,
-      });
+      res
+        .status(500)
+        .json({
+          message: 'Failed to record test start time.',
+          error: queryError.message,
+        });
     } finally {
       client.release();
     }
   } catch (connectionError) {
     console.error('Database connection error (start-test):', connectionError);
-    res.status(500).json({
-      message: 'Failed to connect to the database.',
-      error: connectionError.message,
-    });
+    res
+      .status(500)
+      .json({
+        message: 'Failed to connect to the database.',
+        error: connectionError.message,
+      });
   }
 });
 
@@ -1603,10 +1623,12 @@ app.post(
       typeof answers !== 'object' ||
       !classId
     ) {
-      return res.status(400).json({
-        message:
-          'Invalid input: testId, studentId, answers, and classId are required.',
-      });
+      return res
+        .status(400)
+        .json({
+          message:
+            'Invalid input: testId, studentId, answers, and classId are required.',
+        });
     }
 
     const client = await pool.connect();
@@ -1631,9 +1653,11 @@ app.post(
 
       if (startTimeResult.rowCount === 0) {
         await client.query('ROLLBACK');
-        return res.status(400).json({
-          message: 'Test has not been started by the student for this class.',
-        });
+        return res
+          .status(400)
+          .json({
+            message: 'Test has not been started by the student for this class.',
+          });
       }
 
       const questionsResult = await client.query(
@@ -1859,9 +1883,12 @@ app.delete(
     const { studentId, classId } = req.body;
 
     if (!testId || !studentId || !classId) {
-      return res.status(400).json({
-        message: 'Invalid input: testId, studentId, and classId are required.',
-      });
+      return res
+        .status(400)
+        .json({
+          message:
+            'Invalid input: testId, studentId, and classId are required.',
+        });
     }
 
     const client = await pool.connect();
@@ -1919,6 +1946,7 @@ app.post('/api/check-test-submission/:testId', async (req, res) => {
   }
 });
 
+///////////
 app.get('/api/get-test-result/:testId', authenticateToken, async (req, res) => {
   const { testId } = req.params;
   let { page = 1, limit = 10 } = req.query;
@@ -2393,7 +2421,9 @@ app.get(
                 .replace(/\n/g, ' ')
             : '';
 
-          csvContent += `"${new Date(log.timestamp).toISOString()}","${log.eventType}","${details}"\n`;
+          csvContent += `"${new Date(log.timestamp).toISOString()}","${
+            log.eventType
+          }","${details}"\n`;
         });
 
         zip.file(
@@ -2840,10 +2870,12 @@ app.post('/api/forgot-password', async (req, res) => {
     const tenMinutes = 10 * 60 * 1000;
     if (currentTime - lastAttemptTime < tenMinutes) {
       if (user.otp_attempts >= 3) {
-        return res.status(429).json({
-          error:
-            'Maximum OTP attempts reached. Please try again after 10 minutes.',
-        });
+        return res
+          .status(429)
+          .json({
+            error:
+              'Maximum OTP attempts reached. Please try again after 10 minutes.',
+          });
       }
       await client.query(
         'UPDATE users SET otp_attempts = otp_attempts + 1 WHERE email = $1',
@@ -2910,10 +2942,12 @@ app.post('/api/reset-password', async (req, res) => {
       [hashedPassword, email],
     );
 
-    res.status(200).json({
-      message:
-        'Password reset successful. You can now log in with your new password.',
-    });
+    res
+      .status(200)
+      .json({
+        message:
+          'Password reset successful. You can now log in with your new password.',
+      });
   } catch (err) {
     console.error('Error in /api/reset-password:', err);
     res

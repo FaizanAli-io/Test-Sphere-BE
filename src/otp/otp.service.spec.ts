@@ -1,19 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { OtpService } from './otp.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { ConfigService } from '@nestjs/config';
-import * as nodemailer from 'nodemailer';
-
-jest.mock('nodemailer', () => ({
-  createTransport: jest.fn().mockReturnValue({
-    sendMail: jest.fn().mockResolvedValue(true),
-  }),
-}));
+import { EmailService } from '../email/email.service';
 
 describe('OtpService', () => {
   let service: OtpService;
+  let emailService: EmailService;
   let prismaService: PrismaService;
-  let configService: ConfigService;
 
   const mockPrismaService = {
     user: {
@@ -22,16 +15,8 @@ describe('OtpService', () => {
     },
   };
 
-  const mockConfigService = {
-    get: jest.fn((key: string) => {
-      const config = {
-        EMAIL_HOST: 'smtp.example.com',
-        EMAIL_PORT: 587,
-        EMAIL_USER: 'test@example.com',
-        EMAIL_PASSWORD: 'password123',
-      };
-      return config[key];
-    }),
+  const mockEmailService = {
+    sendOtpEmail: jest.fn().mockResolvedValue(undefined),
   };
 
   beforeEach(async () => {
@@ -43,15 +28,15 @@ describe('OtpService', () => {
           useValue: mockPrismaService,
         },
         {
-          provide: ConfigService,
-          useValue: mockConfigService,
+          provide: EmailService,
+          useValue: mockEmailService,
         },
       ],
     }).compile();
 
     service = module.get<OtpService>(OtpService);
+    emailService = module.get<EmailService>(EmailService);
     prismaService = module.get<PrismaService>(PrismaService);
-    configService = module.get<ConfigService>(ConfigService);
 
     jest.clearAllMocks();
   });
@@ -86,45 +71,20 @@ describe('OtpService', () => {
   });
 
   describe('sendOtpEmail', () => {
-    const mockTransporter = {
-      sendMail: jest.fn().mockResolvedValue(true),
-    };
-
-    beforeEach(() => {
-      (nodemailer.createTransport as jest.Mock).mockReturnValue(
-        mockTransporter,
-      );
-    });
-
     it('should send OTP via email', async () => {
       const email = 'test@example.com';
       const otp = '123456';
 
       await service.sendOtpEmail(email, otp);
 
-      expect(nodemailer.createTransport).toHaveBeenCalledWith({
-        host: 'smtp.example.com',
-        port: 587,
-        secure: true,
-        auth: {
-          user: 'test@example.com',
-          pass: 'password123',
-        },
-      });
-
-      expect(mockTransporter.sendMail).toHaveBeenCalledWith({
-        from: 'test@example.com',
-        to: email,
-        subject: 'Account Verification OTP',
-        text: `Your OTP for account verification is: ${otp}. This OTP is valid for 10 minutes.`,
-      });
+      expect(mockEmailService.sendOtpEmail).toHaveBeenCalledWith(email, otp);
     });
 
     it('should throw an error if email sending fails', async () => {
       const email = 'test@example.com';
       const otp = '123456';
 
-      mockTransporter.sendMail.mockRejectedValueOnce(
+      mockEmailService.sendOtpEmail.mockRejectedValueOnce(
         new Error('Failed to send'),
       );
 

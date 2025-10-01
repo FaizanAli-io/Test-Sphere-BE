@@ -4,9 +4,9 @@ import {
   ForbiddenException,
   ConflictException,
 } from '@nestjs/common';
+import { UserRole } from '../../generated/prisma';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateClassDto, UpdateClassDto } from './dto/class.dto';
-import { UserRole } from '../../generated/prisma';
 
 @Injectable()
 export class ClassService {
@@ -236,5 +236,49 @@ export class ClassService {
     await this.prisma.class.delete({
       where: { id: classId },
     });
+  }
+
+  async leaveClass(studentId: number, classId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: studentId },
+      select: { role: true },
+    });
+
+    if (!user || user.role !== UserRole.student) {
+      throw new ForbiddenException('Only students can leave classes');
+    }
+
+    const classToLeave = await this.prisma.class.findUnique({
+      where: { id: classId },
+    });
+
+    if (!classToLeave) {
+      throw new NotFoundException('Class not found');
+    }
+
+    // Check if student is actually in the class
+    const existingRelation = await this.prisma.studentClassRelation.findUnique({
+      where: {
+        studentId_classId: {
+          studentId,
+          classId,
+        },
+      },
+    });
+
+    if (!existingRelation) {
+      throw new NotFoundException('Student is not enrolled in this class');
+    }
+
+    await this.prisma.studentClassRelation.delete({
+      where: {
+        studentId_classId: {
+          studentId,
+          classId,
+        },
+      },
+    });
+
+    return { message: 'Successfully left the class' };
   }
 }

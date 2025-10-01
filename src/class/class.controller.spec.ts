@@ -14,6 +14,7 @@ describe('ClassController', () => {
     getClassById: jest.fn(),
     updateClass: jest.fn(),
     deleteClass: jest.fn(),
+    leaveClass: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -171,6 +172,21 @@ describe('ClassController', () => {
         userId,
         classId,
       );
+    });
+  });
+
+  describe('leaveClass', () => {
+    const userId = 1;
+    const classId = 1;
+
+    it('should allow a student to leave a class', async () => {
+      const expectedResult = { message: 'Successfully left the class' };
+      mockClassService.leaveClass.mockResolvedValue(expectedResult);
+
+      const result = await controller.leaveClass(userId, classId);
+
+      expect(result).toEqual(expectedResult);
+      expect(mockClassService.leaveClass).toHaveBeenCalledWith(userId, classId);
     });
   });
 });

@@ -26,6 +26,7 @@ describe('ClassService', () => {
     studentClassRelation: {
       findUnique: jest.fn(),
       create: jest.fn(),
+      delete: jest.fn(),
     },
   };
 
@@ -244,6 +245,94 @@ describe('ClassService', () => {
       await expect(service.deleteClass(teacherId, classId)).rejects.toThrow(
         ForbiddenException,
       );
+    });
+  });
+
+  describe('leaveClass', () => {
+    const studentId = 1;
+    const classId = 1;
+
+    it('should allow a student to leave a class they are enrolled in', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        role: UserRole.student,
+      });
+      mockPrismaService.class.findUnique.mockResolvedValue({
+        id: classId,
+      });
+      mockPrismaService.studentClassRelation.findUnique.mockResolvedValue({
+        studentId,
+        classId,
+      });
+      mockPrismaService.studentClassRelation.delete.mockResolvedValue({});
+
+      const result = await service.leaveClass(studentId, classId);
+
+      expect(result).toEqual({ message: 'Successfully left the class' });
+      expect(
+        mockPrismaService.studentClassRelation.delete,
+      ).toHaveBeenCalledWith({
+        where: {
+          studentId_classId: {
+            studentId,
+            classId,
+          },
+        },
+      });
+    });
+
+    it('should throw ForbiddenException if user is not a student', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        role: UserRole.teacher,
+      });
+
+      await expect(service.leaveClass(studentId, classId)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(
+        mockPrismaService.studentClassRelation.delete,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException if class does not exist', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        role: UserRole.student,
+      });
+      mockPrismaService.class.findUnique.mockResolvedValue(null);
+
+      await expect(service.leaveClass(studentId, classId)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(
+        mockPrismaService.studentClassRelation.delete,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException if student is not enrolled in the class', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        role: UserRole.student,
+      });
+      mockPrismaService.class.findUnique.mockResolvedValue({
+        id: classId,
+      });
+      mockPrismaService.studentClassRelation.findUnique.mockResolvedValue(null);
+
+      await expect(service.leaveClass(studentId, classId)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(
+        mockPrismaService.studentClassRelation.delete,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenException if user does not exist', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue(null);
+
+      await expect(service.leaveClass(studentId, classId)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(
+        mockPrismaService.studentClassRelation.delete,
+      ).not.toHaveBeenCalled();
     });
   });
 });

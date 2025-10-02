@@ -37,6 +37,7 @@ export class ClassService {
       const newClass = await this.prisma.class.create({
         data: {
           name: createClassDto.name,
+          description: createClassDto.description,
           teacherId,
           classCode,
         },

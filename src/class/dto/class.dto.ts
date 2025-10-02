@@ -9,6 +9,16 @@ export class CreateClassDto {
   @IsString()
   @Length(1, 255)
   name: string;
+
+  @ApiProperty({
+    example:
+      'An advanced mathematics course covering algebra, calculus, and statistics.',
+    description: 'Description of the class content and objectives',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  description?: string;
 }
 
 export class JoinClassDto {
@@ -25,9 +35,19 @@ export class UpdateClassDto {
   @ApiProperty({
     example: 'Advanced Mathematics',
     description: 'The new name of the class',
+    required: false,
   })
   @IsString()
   @Length(1, 255)
   @IsOptional()
   name?: string;
+
+  @ApiProperty({
+    example: 'An updated description for the advanced mathematics course.',
+    description: 'Updated description of the class content and objectives',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  description?: string;
 }

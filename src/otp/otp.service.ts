@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class OtpService {
@@ -14,7 +14,7 @@ export class OtpService {
   }
 
   async saveOtp(email: string, otp: string): Promise<void> {
-    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
     await this.prisma.user.update({
       where: { email },

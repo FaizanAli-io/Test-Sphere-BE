@@ -39,13 +39,17 @@ describe('ClassController', () => {
   });
 
   describe('createClass', () => {
-    const createClassDto = { name: 'Test Class' };
+    const createClassDto = {
+      name: 'Test Class',
+      description: 'A comprehensive test class for students',
+    };
     const userId = 1;
 
     it('should create a class', async () => {
       const expectedResult = {
         id: 1,
         name: createClassDto.name,
+        description: createClassDto.description,
         teacherId: userId,
         classCode: 'ABC123',
       };
@@ -90,8 +94,8 @@ describe('ClassController', () => {
 
     it('should get all classes for user', async () => {
       const expectedClasses = [
-        { id: 1, name: 'Class 1' },
-        { id: 2, name: 'Class 2' },
+        { id: 1, name: 'Class 1', description: 'First test class' },
+        { id: 2, name: 'Class 2', description: 'Second test class' },
       ];
 
       mockClassService.getUserClasses.mockResolvedValue(expectedClasses);
@@ -114,6 +118,7 @@ describe('ClassController', () => {
       const expectedClass = {
         id: classId,
         name: 'Test Class',
+        description: 'A comprehensive test class for students',
         teacherId: userId,
       };
 
@@ -132,12 +137,16 @@ describe('ClassController', () => {
   describe('updateClass', () => {
     const userId = 1;
     const classId = 1;
-    const updateClassDto = { name: 'Updated Class' };
+    const updateClassDto = {
+      name: 'Updated Class',
+      description: 'Updated description for the class',
+    };
 
     it('should update a class', async () => {
       const expectedResult = {
         id: classId,
         name: updateClassDto.name,
+        description: updateClassDto.description,
         teacherId: userId,
       };
 

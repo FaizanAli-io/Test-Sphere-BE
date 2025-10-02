@@ -40,10 +40,11 @@ enum UserRole {
 }
 
 model Class {
-  id        Int    @id @default(autoincrement()) @map("class_id")
-  name      String @map("class_name") @db.VarChar(255)
-  teacherId Int?   @map("teacher_id")
-  classCode String @unique @map("class_code") @db.VarChar(10)
+  id          Int     @id @default(autoincrement()) @map("class_id")
+  name        String  @map("class_name") @db.VarChar(255)
+  description String? @map("description") @db.Text
+  teacherId   Int?    @map("teacher_id")
+  classCode   String  @unique @map("class_code") @db.VarChar(10)
 
   // Relations
   teacher         User?                  @relation("TeacherClasses", fields: [teacherId], references: [id], onDelete: Cascade)

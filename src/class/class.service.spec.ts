@@ -52,7 +52,10 @@ describe('ClassService', () => {
   });
 
   describe('createClass', () => {
-    const createClassDto = { name: 'Test Class' };
+    const createClassDto = {
+      name: 'Test Class',
+      description: 'A comprehensive test class for students',
+    };
     const teacherId = 1;
 
     it('should create a class for a teacher', async () => {
@@ -62,6 +65,7 @@ describe('ClassService', () => {
       mockPrismaService.class.create.mockResolvedValue({
         id: 1,
         name: createClassDto.name,
+        description: createClassDto.description,
         teacherId,
         classCode: 'ABC123',
       });
@@ -70,6 +74,7 @@ describe('ClassService', () => {
 
       expect(result).toBeDefined();
       expect(result.name).toBe(createClassDto.name);
+      expect(result.description).toBe(createClassDto.description);
       expect(mockPrismaService.class.create).toHaveBeenCalled();
     });
 
@@ -143,8 +148,8 @@ describe('ClassService', () => {
 
     it('should get classes for a teacher', async () => {
       const mockClasses = [
-        { id: 1, name: 'Class 1' },
-        { id: 2, name: 'Class 2' },
+        { id: 1, name: 'Class 1', description: 'First test class' },
+        { id: 2, name: 'Class 2', description: 'Second test class' },
       ];
 
       mockPrismaService.class.findMany.mockResolvedValue(mockClasses);
@@ -161,8 +166,8 @@ describe('ClassService', () => {
 
     it('should get classes for a student', async () => {
       const mockClasses = [
-        { id: 1, name: 'Class 1' },
-        { id: 2, name: 'Class 2' },
+        { id: 1, name: 'Class 1', description: 'First student class' },
+        { id: 2, name: 'Class 2', description: 'Second student class' },
       ];
 
       mockPrismaService.class.findMany.mockResolvedValue(mockClasses);

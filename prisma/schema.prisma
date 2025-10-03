@@ -72,8 +72,8 @@ model Test {
   classId     Int?      @map("class_id")
   title       String    @db.VarChar(255)
   description String
-  date        DateTime
   duration    Int
+  date        DateTime
   disableTime DateTime? @map("disable_time")
 
   // Relations

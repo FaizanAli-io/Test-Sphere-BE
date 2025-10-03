@@ -76,10 +76,13 @@ export class CreateTestDto {
   @ApiProperty({ description: 'Duration of the test in minutes' })
   @IsNumber()
   @Min(1)
-  @Max(480) // Maximum 8 hours
+  @Max(480)
   duration: number;
 
-  @ApiProperty({ description: 'Date when the test starts' })
+  @ApiProperty({
+    description: 'Date and time when the test starts (ISO 8601)',
+    example: '2025-10-03T15:30:00Z',
+  })
   @IsDateString()
   date: string;
 

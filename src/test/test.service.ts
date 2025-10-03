@@ -24,7 +24,6 @@ export class TestService {
       throw new ForbiddenException('Only the class teacher can create tests');
     }
 
-    // Create the test
     const test = await this.prisma.test.create({
       data: {
         classId: createTestDto.classId,

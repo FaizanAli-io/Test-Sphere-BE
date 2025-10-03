@@ -13,52 +13,29 @@ export class ClassService {
   constructor(private prisma: PrismaService) {}
 
   private generateClassCode(): string {
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let code = '';
-    for (let i = 0; i < 6; i++) {
-      code += characters.charAt(Math.floor(Math.random() * characters.length));
-    }
-    return code;
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    return Array.from({ length: 6 }, () =>
+      chars.charAt(Math.floor(Math.random() * chars.length)),
+    ).join('');
   }
 
-  async createClass(teacherId: number, createClassDto: CreateClassDto) {
+  async createClass(teacherId: number, dto: CreateClassDto) {
     const user = await this.prisma.user.findUnique({
       where: { id: teacherId },
       select: { role: true },
     });
-
-    if (!user || user.role !== UserRole.teacher) {
+    if (!user || user.role !== UserRole.teacher)
       throw new ForbiddenException('Only teachers can create classes');
-    }
 
     const classCode = this.generateClassCode();
-
     try {
-      const newClass = await this.prisma.class.create({
-        data: {
-          name: createClassDto.name,
-          description: createClassDto.description,
-          teacherId,
-          classCode,
-        },
-        include: {
-          teacher: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-        },
+      return await this.prisma.class.create({
+        data: { ...dto, teacherId, classCode },
+        include: { teacher: { select: { id: true, name: true, email: true } } },
       });
-
-      return newClass;
-    } catch (error) {
-      if (error.code === 'P2002') {
-        // Retry with a new code if there's a unique constraint violation
-        return this.createClass(teacherId, createClassDto);
-      }
-      throw error;
+    } catch (err) {
+      if (err.code === 'P2002') return this.createClass(teacherId, dto);
+      throw err;
     }
   }
 
@@ -67,300 +44,117 @@ export class ClassService {
       where: { id: studentId },
       select: { role: true },
     });
-
-    if (!user || user.role !== UserRole.student) {
+    if (!user || user.role !== UserRole.student)
       throw new ForbiddenException('Only students can join classes');
-    }
 
-    const classToJoin = await this.prisma.class.findUnique({
-      where: { classCode },
+    const cls = await this.prisma.class.findUnique({ where: { classCode } });
+    if (!cls) throw new NotFoundException('Class not found');
+
+    const existing = await this.prisma.studentClassRelation.findUnique({
+      where: { studentId_classId: { studentId, classId: cls.id } },
     });
-
-    if (!classToJoin) {
-      throw new NotFoundException('Class not found');
-    }
-
-    // Check if student is already in the class
-    const existingRelation = await this.prisma.studentClassRelation.findUnique({
-      where: {
-        studentId_classId: {
-          studentId,
-          classId: classToJoin.id,
-        },
-      },
-    });
-
-    if (existingRelation) {
-      throw new ConflictException('Student is already in this class');
-    }
+    if (existing) throw new ConflictException('Student already in class');
 
     return this.prisma.studentClassRelation.create({
-      data: {
-        studentId,
-        classId: classToJoin.id,
-      },
-      include: {
-        class: true,
-      },
+      data: { studentId, classId: cls.id },
+      include: { class: true },
     });
   }
 
   async getClassById(userId: number, classId: number) {
-    const classWithDetails = await this.prisma.class.findUnique({
+    const cls = await this.prisma.class.findUnique({
       where: { id: classId },
       include: {
-        teacher: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
+        teacher: { select: { id: true, name: true, email: true } },
         students: {
           include: {
-            student: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
+            student: { select: { id: true, name: true, email: true } },
           },
         },
       },
     });
+    if (!cls) throw new NotFoundException('Class not found');
 
-    if (!classWithDetails) {
-      throw new NotFoundException('Class not found');
-    }
+    const isTeacher = cls.teacherId === userId;
+    const isStudent = cls.students.some((rel) => rel.studentId === userId);
+    if (!isTeacher && !isStudent) throw new ForbiddenException('Access denied');
 
-    // Check if user has access to this class
-    if (
-      classWithDetails.teacherId !== userId &&
-      !classWithDetails.students.some((rel) => rel.studentId === userId)
-    ) {
-      throw new ForbiddenException('Access denied');
-    }
-
-    return classWithDetails;
+    return cls;
   }
 
-  async getUserClasses(userId: number, userRole: UserRole) {
-    if (userRole === UserRole.teacher) {
+  async getUserClasses(userId: number, role: UserRole) {
+    if (role === UserRole.teacher) {
       return this.prisma.class.findMany({
         where: { teacherId: userId },
         include: {
           students: {
             include: {
-              student: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                },
-              },
-            },
-          },
-        },
-      });
-    } else {
-      return this.prisma.class.findMany({
-        where: {
-          students: {
-            some: {
-              studentId: userId,
-            },
-          },
-        },
-        include: {
-          teacher: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
+              student: { select: { id: true, name: true, email: true } },
             },
           },
         },
       });
     }
+    return this.prisma.class.findMany({
+      where: { students: { some: { studentId: userId } } },
+      include: { teacher: { select: { id: true, name: true, email: true } } },
+    });
   }
 
-  async updateClass(
-    teacherId: number,
-    classId: number,
-    updateClassDto: UpdateClassDto,
-  ) {
-    const classToUpdate = await this.prisma.class.findUnique({
-      where: { id: classId },
-    });
-
-    if (!classToUpdate) {
-      throw new NotFoundException('Class not found');
-    }
-
-    if (classToUpdate.teacherId !== teacherId) {
-      throw new ForbiddenException(
-        'Only the teacher of this class can update it',
-      );
-    }
+  async updateClass(teacherId: number, classId: number, dto: UpdateClassDto) {
+    const cls = await this.prisma.class.findUnique({ where: { id: classId } });
+    if (!cls) throw new NotFoundException('Class not found');
+    if (cls.teacherId !== teacherId)
+      throw new ForbiddenException('Only the teacher can update');
 
     return this.prisma.class.update({
       where: { id: classId },
-      data: updateClassDto,
-      include: {
-        teacher: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
+      data: dto,
+      include: { teacher: { select: { id: true, name: true, email: true } } },
     });
   }
 
   async deleteClass(teacherId: number, classId: number) {
-    const classToDelete = await this.prisma.class.findUnique({
-      where: { id: classId },
-    });
+    const cls = await this.prisma.class.findUnique({ where: { id: classId } });
+    if (!cls) throw new NotFoundException('Class not found');
+    if (cls.teacherId !== teacherId)
+      throw new ForbiddenException('Only the teacher can delete');
 
-    if (!classToDelete) {
-      throw new NotFoundException('Class not found');
-    }
-
-    if (classToDelete.teacherId !== teacherId) {
-      throw new ForbiddenException(
-        'Only the teacher of this class can delete it',
-      );
-    }
-
-    await this.prisma.class.delete({
-      where: { id: classId },
-    });
+    await this.prisma.class.delete({ where: { id: classId } });
   }
 
-  async enrollInClass(studentId: number, classCode: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: studentId },
-      select: { role: true },
+  async leaveClass(studentId: number, classId: number) {
+    const cls = await this.prisma.class.findUnique({ where: { id: classId } });
+    if (!cls) throw new NotFoundException('Class not found');
+
+    const rel = await this.prisma.studentClassRelation.findUnique({
+      where: { studentId_classId: { studentId, classId } },
     });
+    if (!rel) throw new NotFoundException('Not enrolled in this class');
 
-    if (!user || user.role !== UserRole.student) {
-      throw new ForbiddenException('Only students can enroll in classes');
-    }
-
-    if (!classCode) {
-      throw new NotFoundException('Class code is required');
-    }
-
-    const classToJoin = await this.prisma.class.findFirst({
-      where: { classCode },
-      select: { id: true, name: true },
+    await this.prisma.studentClassRelation.delete({
+      where: { studentId_classId: { studentId, classId } },
     });
-
-    if (!classToJoin) {
-      throw new NotFoundException('Class not found');
-    }
-
-    // Check if student is already enrolled
-    const existingRelation = await this.prisma.studentClassRelation.findUnique({
-      where: {
-        studentId_classId: {
-          studentId,
-          classId: classToJoin.id,
-        },
-      },
-    });
-
-    if (existingRelation) {
-      throw new ConflictException('You are already enrolled in this class');
-    }
-
-    await this.prisma.studentClassRelation.create({
-      data: {
-        studentId,
-        classId: classToJoin.id,
-      },
-    });
-
-    return {
-      message: 'Successfully enrolled in class!',
-      class: {
-        classId: classToJoin.id,
-        className: classToJoin.name,
-      },
-    };
+    return { message: 'Successfully left the class' };
   }
 
-  async getEnrolledClasses(studentId: number) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: studentId },
-      select: { role: true },
-    });
-
-    if (!user || user.role !== UserRole.student) {
-      throw new ForbiddenException('Only students can view enrolled classes');
-    }
-
-    const enrolledClasses = await this.prisma.studentClassRelation.findMany({
-      where: { studentId },
+  async getClassStudents(classId: number, requesterId: number) {
+    const cls = await this.prisma.class.findUnique({
+      where: { id: classId },
       include: {
-        class: {
-          select: {
-            id: true,
-            name: true,
+        students: {
+          include: {
+            student: { select: { id: true, name: true, email: true } },
           },
         },
       },
     });
+    if (!cls) throw new NotFoundException('Class not found');
 
-    return enrolledClasses.map((relation) => ({
-      classId: relation.class.id,
-      className: relation.class.name,
-    }));
-  }
+    const isTeacher = cls.teacherId === requesterId;
+    const isStudent = cls.students.some((rel) => rel.studentId === requesterId);
+    if (!isTeacher && !isStudent) throw new ForbiddenException('Access denied');
 
-  async leaveClass(studentId: number, classId: number) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: studentId },
-      select: { role: true },
-    });
-
-    if (!user || user.role !== UserRole.student) {
-      throw new ForbiddenException('Only students can leave classes');
-    }
-
-    const classToLeave = await this.prisma.class.findUnique({
-      where: { id: classId },
-    });
-
-    if (!classToLeave) {
-      throw new NotFoundException('Class not found');
-    }
-
-    // Check if student is actually in the class
-    const existingRelation = await this.prisma.studentClassRelation.findUnique({
-      where: {
-        studentId_classId: {
-          studentId,
-          classId,
-        },
-      },
-    });
-
-    if (!existingRelation) {
-      throw new NotFoundException('Student is not enrolled in this class');
-    }
-
-    await this.prisma.studentClassRelation.delete({
-      where: {
-        studentId_classId: {
-          studentId,
-          classId,
-        },
-      },
-    });
-
-    return { message: 'Successfully left the class' };
+    return cls.students.map((rel) => rel.student);
   }
 }

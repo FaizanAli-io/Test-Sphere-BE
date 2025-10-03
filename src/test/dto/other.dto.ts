@@ -1,11 +1,83 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
+  Min,
+  IsEnum,
+  IsArray,
   IsNumber,
   IsString,
-  IsArray,
   IsOptional,
-  IsBoolean,
 } from 'class-validator';
+import { QuestionType } from './test.dto';
+
+export class SubmitAnswerDto {
+  @ApiProperty({ description: 'ID of the question being answered' })
+  @IsNumber()
+  questionId: number;
+
+  @ApiProperty({ description: "Student's answer" })
+  @IsString()
+  answer: string;
+}
+
+export class GradeTestDto {
+  @ApiProperty({ description: 'ID of the test submission to grade' })
+  @IsNumber()
+  submissionId: number;
+
+  @ApiProperty({
+    description: 'Array of grades for each question',
+    type: [Number],
+  })
+  @IsArray()
+  @IsNumber({}, { each: true })
+  grades: number[];
+}
+
+export class BulkQuestionDto {
+  @ApiProperty({ description: 'Test ID these questions belong to' })
+  @IsNumber()
+  testId: number;
+
+  @ApiProperty({ description: 'The question text' })
+  @IsString()
+  text: string;
+
+  @ApiProperty({ enum: QuestionType, description: 'Type of question' })
+  @IsEnum(QuestionType)
+  type: QuestionType;
+
+  @ApiProperty({
+    description: 'Possible answers for multiple choice questions',
+    required: false,
+  })
+  @IsArray()
+  @IsOptional()
+  options?: string[];
+
+  @ApiProperty({ description: 'Base64 encoded image', required: false })
+  @IsString()
+  @IsOptional()
+  image?: string;
+
+  @ApiProperty({ description: 'Correct answer', required: false })
+  @IsString()
+  @IsOptional()
+  answer?: string;
+
+  @ApiProperty({ description: 'Points for this question' })
+  @IsNumber()
+  @Min(0)
+  points: number;
+}
+
+export class SubmitQuestionsDto {
+  @ApiProperty({
+    type: [BulkQuestionDto],
+    description: 'Array of questions to submit',
+  })
+  @IsArray()
+  questions: BulkQuestionDto[];
+}
 
 export class AnswerSubmissionDto {
   @ApiProperty({ description: 'ID of the question being answered' })

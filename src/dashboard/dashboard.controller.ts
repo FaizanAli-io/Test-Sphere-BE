@@ -12,11 +12,11 @@ import { User } from '../common/decorators/user.decorator';
 @ApiTags('Dashboard')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
-@Controller('api')
+@Controller('dashboard')
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
-  @Get('dashboard')
+  @Get('student')
   @ApiOperation({ summary: 'Get student dashboard data' })
   @ApiResponse({
     status: 200,
@@ -94,7 +94,7 @@ export class DashboardController {
     return this.dashboardService.getStudentDashboard(userId);
   }
 
-  @Get('teacher-dashboard')
+  @Get('teacher')
   @ApiOperation({ summary: 'Get teacher dashboard data' })
   @ApiResponse({
     status: 200,

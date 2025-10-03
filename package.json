@@ -8,7 +8,7 @@
   },
   "scripts": {
     "prebuild": "prisma generate",
-    "build": "npx nest build",
+    "build": "nest build",
     "start": "nest start",
     "start:prod": "node dist/main",
     "start:dev": "nest start --watch",

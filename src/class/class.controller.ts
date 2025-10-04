@@ -1,25 +1,31 @@
 import {
   Controller,
-  Get,
   Post,
-  Patch,
-  Delete,
+  Get,
   Body,
   Param,
+  Patch,
+  Delete,
   UseGuards,
   ParseIntPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
-  ApiResponse,
   ApiBearerAuth,
+  ApiResponse,
 } from '@nestjs/swagger';
-import { ClassService } from './class.service';
-import { CreateClassDto, JoinClassDto, UpdateClassDto } from './dto/class.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { User } from '../common/decorators/user.decorator';
+
+import {
+  CreateClassDto,
+  JoinClassDto,
+  UpdateClassDto,
+  KickStudentDto,
+} from './dto';
 import { UserRole } from '@prisma/client';
+import { ClassService } from './class.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { GetUser } from '../common/decorators/get-user.decorator';
 
 @ApiTags('Classes')
 @ApiBearerAuth()
@@ -30,69 +36,86 @@ export class ClassController {
 
   @Post()
   @ApiOperation({ summary: 'Create a new class (Teacher only)' })
-  async createClass(@User('id') userId: number, @Body() dto: CreateClassDto) {
-    return this.classService.createClass(userId, dto);
+  @ApiResponse({ status: 201, description: 'Class created successfully' })
+  async createClass(
+    @Body() dto: CreateClassDto,
+    @GetUser('id') userId: number,
+    @GetUser('role') role: UserRole,
+  ) {
+    return this.classService.createClass(dto, userId, role);
   }
 
   @Post('join')
   @ApiOperation({ summary: 'Join a class (Student only)' })
-  async joinClass(@User('id') userId: number, @Body() dto: JoinClassDto) {
-    return this.classService.joinClass(userId, dto.classCode);
+  @ApiResponse({ status: 200, description: 'Successfully joined class' })
+  async joinClass(
+    @Body() dto: JoinClassDto,
+    @GetUser('id') userId: number,
+    @GetUser('role') role: UserRole,
+  ) {
+    return this.classService.joinClass(dto, userId, role);
   }
 
   @Get()
   @ApiOperation({ summary: 'Get all classes for current user' })
-  async getUserClasses(
-    @User('id') userId: number,
-    @User('role') role: UserRole,
+  @ApiResponse({ status: 200, description: 'List of user classes' })
+  async getMyClasses(
+    @GetUser('id') userId: number,
+    @GetUser('role') role: UserRole,
   ) {
-    return this.classService.getUserClasses(userId, role);
+    return this.classService.getMyClasses(userId, role);
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get class details' })
-  async getClassById(
-    @User('id') userId: number,
-    @Param('id', ParseIntPipe) id: number,
-  ) {
-    return this.classService.getClassById(userId, id);
-  }
-
-  @Get(':id/students')
-  @ApiOperation({ summary: 'Get students in a class' })
-  async getClassStudents(
-    @User('id') userId: number,
-    @Param('id', ParseIntPipe) id: number,
-  ) {
-    return this.classService.getClassStudents(id, userId);
+  @ApiOperation({ summary: 'Get class details by ID' })
+  @ApiResponse({ status: 200, description: 'Class details returned' })
+  async getClass(@Param('id', ParseIntPipe) id: number) {
+    return this.classService.getClassById(id);
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Update class (Teacher only)' })
+  @ApiOperation({ summary: 'Update class details (Teacher only)' })
+  @ApiResponse({ status: 200, description: 'Class updated successfully' })
   async updateClass(
-    @User('id') userId: number,
     @Param('id', ParseIntPipe) id: number,
     @Body() dto: UpdateClassDto,
+    @GetUser('id') userId: number,
+    @GetUser('role') role: UserRole,
   ) {
-    return this.classService.updateClass(userId, id, dto);
+    return this.classService.updateClass(id, dto, userId, role);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete class (Teacher only)' })
+  @ApiResponse({ status: 200, description: 'Class deleted successfully' })
   async deleteClass(
-    @User('id') userId: number,
     @Param('id', ParseIntPipe) id: number,
+    @GetUser('id') userId: number,
+    @GetUser('role') role: UserRole,
   ) {
-    await this.classService.deleteClass(userId, id);
-    return { message: 'Class deleted successfully' };
+    return this.classService.deleteClass(id, userId, role);
   }
 
-  @Delete(':id/leave')
-  @ApiOperation({ summary: 'Leave a class (Student only)' })
-  async leaveClass(
-    @User('id') userId: number,
-    @Param('id', ParseIntPipe) id: number,
+  @Post(':id/kick')
+  @ApiOperation({ summary: 'Kick a student from class (Teacher only)' })
+  @ApiResponse({ status: 200, description: 'Student removed from class' })
+  async kickStudent(
+    @Param('id', ParseIntPipe) classId: number,
+    @Body() dto: KickStudentDto,
+    @GetUser('id') userId: number,
+    @GetUser('role') role: UserRole,
   ) {
-    return this.classService.leaveClass(userId, id);
+    return this.classService.kickStudent(classId, dto, userId, role);
+  }
+
+  @Post(':id/leave')
+  @ApiOperation({ summary: 'Leave a class (Student only)' })
+  @ApiResponse({ status: 200, description: 'Left class successfully' })
+  async leaveClass(
+    @Param('id', ParseIntPipe) classId: number,
+    @GetUser('id') userId: number,
+    @GetUser('role') role: UserRole,
+  ) {
+    return this.classService.leaveClass(classId, userId, role);
   }
 }

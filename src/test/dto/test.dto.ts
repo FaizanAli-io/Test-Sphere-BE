@@ -1,138 +1,151 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
-  Min,
-  Max,
-  IsEnum,
-  IsArray,
-  IsNumber,
   IsString,
+  IsInt,
   IsOptional,
   IsDateString,
+  IsEnum,
+  IsArray,
+  ValidateNested,
+  Min,
 } from 'class-validator';
-
-export enum QuestionType {
-  TRUE_FALSE = 'TRUE_FALSE',
-  LONG_ANSWER = 'LONG_ANSWER',
-  SHORT_ANSWER = 'SHORT_ANSWER',
-  MULTIPLE_CHOICE = 'MULTIPLE_CHOICE',
-}
-
-export class QuestionDto {
-  @ApiProperty({ description: 'The question text' })
-  @IsString()
-  text: string;
-
-  @ApiProperty({ enum: QuestionType, description: 'Type of question' })
-  @IsEnum(QuestionType)
-  type: QuestionType;
-
-  @ApiProperty({ description: 'Points for this question' })
-  @IsNumber()
-  @Min(0)
-  points: number;
-
-  @ApiProperty({
-    description: 'Possible answers for multiple choice questions',
-    required: false,
-  })
-  @IsArray()
-  @IsOptional()
-  options?: string[];
-
-  @ApiProperty({ description: 'Correct answer(s)', required: false })
-  @IsArray()
-  @IsOptional()
-  correctAnswers?: string[];
-}
-
-export class AddQuestionsDto {
-  @ApiProperty({
-    type: [QuestionDto],
-    description: 'Array of questions to add',
-  })
-  @IsArray()
-  questions: QuestionDto[];
-}
-
-export class UpdateQuestionDto extends QuestionDto {
-  @ApiProperty({
-    description: 'Question ID for updating existing question',
-    required: false,
-  })
-  @IsNumber()
-  @IsOptional()
-  id?: number;
-}
+import { Type } from 'class-transformer';
+import { TestStatus, QuestionType } from '@prisma/client';
 
 export class CreateTestDto {
-  @ApiProperty({ description: 'Title of the test' })
+  @ApiProperty()
+  @IsInt()
+  classId: number;
+
+  @ApiProperty()
   @IsString()
   title: string;
 
-  @ApiProperty({ description: 'Description of the test' })
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsString()
-  description: string;
+  description?: string;
 
-  @ApiProperty({ description: 'Duration of the test in minutes' })
-  @IsNumber()
+  @ApiProperty()
+  @IsInt()
   @Min(1)
-  @Max(480)
   duration: number;
 
-  @ApiProperty({
-    description: 'Date and time when the test starts (ISO 8601)',
-    example: '2025-10-03T15:30:00Z',
-  })
+  @ApiProperty()
   @IsDateString()
-  date: string;
+  startAt: string;
 
-  @ApiProperty({ description: 'Class ID this test belongs to' })
-  @IsNumber()
-  classId: number;
+  @ApiProperty()
+  @IsDateString()
+  endAt: string;
+
+  @ApiProperty({ enum: TestStatus, default: TestStatus.draft })
+  @IsOptional()
+  @IsEnum(TestStatus)
+  status?: TestStatus;
 }
 
 export class UpdateTestDto {
-  @ApiProperty({ description: 'Title of the test', required: false })
-  @IsString()
+  @ApiProperty({ required: false })
   @IsOptional()
+  @IsString()
   title?: string;
 
-  @ApiProperty({ description: 'Description of the test', required: false })
-  @IsString()
+  @ApiProperty({ required: false })
   @IsOptional()
+  @IsString()
   description?: string;
 
-  @ApiProperty({
-    description: 'Duration of the test in minutes',
-    required: false,
-  })
-  @IsNumber()
-  @Min(1)
-  @Max(480)
+  @ApiProperty({ required: false })
   @IsOptional()
+  @IsInt()
   duration?: number;
 
-  @ApiProperty({ description: 'Date when the test starts', required: false })
+  @ApiProperty({ required: false })
   @IsOptional()
-  date?: Date;
+  @IsDateString()
+  startAt?: string;
 
-  @ApiProperty({ description: 'Whether the test is disabled', required: false })
+  @ApiProperty({ required: false })
   @IsOptional()
-  disableTime?: boolean;
+  @IsDateString()
+  endAt?: string;
+
+  @ApiProperty({ required: false, enum: TestStatus })
+  @IsOptional()
+  @IsEnum(TestStatus)
+  status?: TestStatus;
 }
 
-export class EditTestDto extends UpdateTestDto {
-  @ApiProperty({
-    type: [UpdateQuestionDto],
-    description: 'Array of questions to update/add',
-    required: false,
-  })
-  @IsArray()
-  @IsOptional()
-  questions?: UpdateQuestionDto[];
+export class CreateQuestionDto {
+  @ApiProperty()
+  @IsInt()
+  testId: number;
 
-  @ApiProperty({ description: 'Feedback for the submission', required: false })
+  @ApiProperty()
   @IsString()
+  text: string;
+
+  @ApiProperty({ enum: QuestionType })
+  @IsEnum(QuestionType)
+  type: QuestionType;
+
+  @ApiProperty({ type: [String] })
+  @IsArray()
+  options: string[];
+
+  @ApiProperty({ required: false })
   @IsOptional()
-  feedback?: string;
+  @IsInt()
+  correctAnswer?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  maxMarks?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  image?: string;
+}
+
+export class UpdateQuestionDto {
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  text?: string;
+
+  @ApiProperty({ required: false, enum: QuestionType })
+  @IsOptional()
+  @IsEnum(QuestionType)
+  type?: QuestionType;
+
+  @ApiProperty({ required: false, type: [String] })
+  @IsOptional()
+  @IsArray()
+  options?: string[];
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsInt()
+  correctAnswer?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsInt()
+  maxMarks?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  image?: string;
+}
+
+export class AddQuestionsDto {
+  @ApiProperty({ type: [CreateQuestionDto] })
+  @ValidateNested({ each: true })
+  @Type(() => CreateQuestionDto)
+  questions: CreateQuestionDto[];
 }

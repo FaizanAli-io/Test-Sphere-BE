@@ -1,24 +1,31 @@
 import {
-  Get,
+  Controller,
   Post,
+  Get,
   Patch,
   Delete,
-  Body,
   Param,
+  Body,
   UseGuards,
-  Controller,
   ParseIntPipe,
 } from '@nestjs/common';
 import {
   ApiTags,
+  ApiBearerAuth,
   ApiOperation,
   ApiResponse,
-  ApiBearerAuth,
 } from '@nestjs/swagger';
+
+import {
+  CreateTestDto,
+  UpdateTestDto,
+  AddQuestionsDto,
+  UpdateQuestionDto,
+} from './dto/test.dto';
+import { UserRole } from '@prisma/client';
 import { TestService } from './test.service';
-import { User } from '../common/decorators/user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { CreateTestDto, EditTestDto, AddQuestionsDto } from './dto/test.dto';
+import { GetUser } from '../common/decorators/get-user.decorator';
 
 @ApiTags('Tests')
 @ApiBearerAuth()
@@ -28,87 +35,95 @@ export class TestController {
   constructor(private readonly testService: TestService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Create a new test' })
-  @ApiResponse({ status: 201, description: 'Test created successfully.' })
-  @ApiResponse({ status: 403, description: 'Only teachers can create tests.' })
+  @ApiOperation({ summary: 'Create a new test (Teacher only)' })
+  @ApiResponse({ status: 201, description: 'Test created successfully' })
   async createTest(
-    @User('id') userId: number,
-    @Body() createTestDto: CreateTestDto,
+    @Body() dto: CreateTestDto,
+    @GetUser('id') userId: number,
+    @GetUser('role') role: UserRole,
   ) {
-    return this.testService.createTest(userId, createTestDto);
-  }
-
-  @Get('class/:classId')
-  @ApiOperation({ summary: 'Get tests by class ID with questions' })
-  @ApiResponse({ status: 200, description: 'Tests retrieved successfully.' })
-  @ApiResponse({ status: 403, description: 'No access to this class.' })
-  async getTestsByClass(
-    @User('id') userId: number,
-    @Param('classId', ParseIntPipe) classId: number,
-  ) {
-    return this.testService.getTestsByClass(userId, classId);
+    return this.testService.createTest(dto, userId, role);
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get test by ID' })
-  @ApiResponse({ status: 200, description: 'Test retrieved successfully.' })
-  @ApiResponse({ status: 404, description: 'Test not found.' })
-  async getTest(
-    @User('id') userId: number,
-    @Param('id', ParseIntPipe) testId: number,
-  ) {
-    return this.testService.getTest(userId, testId);
+  @ApiOperation({ summary: 'Get a test by ID' })
+  @ApiResponse({ status: 200, description: 'Returns test details' })
+  async getTestById(@Param('id', ParseIntPipe) id: number) {
+    return this.testService.getTestById(id);
+  }
+
+  @Get('class/:classId')
+  @ApiOperation({ summary: 'Get all tests for a class' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns all tests for a given class',
+  })
+  async getTestsByClassId(@Param('classId', ParseIntPipe) classId: number) {
+    return this.testService.getTestsByClassId(classId);
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Edit test and questions' })
-  @ApiResponse({ status: 200, description: 'Test updated successfully.' })
-  @ApiResponse({ status: 403, description: 'Only test creator can edit.' })
-  async editTest(
-    @User('id') userId: number,
-    @Param('id', ParseIntPipe) testId: number,
-    @Body() editTestDto: EditTestDto,
+  @ApiOperation({ summary: 'Update a test (Teacher only)' })
+  @ApiResponse({ status: 200, description: 'Test updated successfully' })
+  async updateTest(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateTestDto,
+    @GetUser('id') userId: number,
+    @GetUser('role') role: UserRole,
   ) {
-    return this.testService.editTest(userId, testId, editTestDto);
+    return this.testService.updateTest(id, dto, userId, role);
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'Delete test and questions' })
-  @ApiResponse({ status: 200, description: 'Test deleted successfully.' })
-  @ApiResponse({ status: 403, description: 'Only test creator can delete.' })
+  @ApiOperation({ summary: 'Delete a test (Teacher only)' })
+  @ApiResponse({ status: 200, description: 'Test deleted successfully' })
   async deleteTest(
-    @User('id') userId: number,
-    @Param('id', ParseIntPipe) testId: number,
+    @Param('id', ParseIntPipe) id: number,
+    @GetUser('id') userId: number,
+    @GetUser('role') role: UserRole,
   ) {
-    return this.testService.deleteTest(userId, testId);
-  }
-
-  @Post(':id/questions')
-  @ApiOperation({ summary: 'Add questions to a test' })
-  @ApiResponse({ status: 200, description: 'Questions added successfully.' })
-  @ApiResponse({
-    status: 403,
-    description: 'Only the test creator can add questions.',
-  })
-  async addQuestions(
-    @User('id') userId: number,
-    @Param('id', ParseIntPipe) testId: number,
-    @Body() questionsDto: AddQuestionsDto,
-  ) {
-    return this.testService.addQuestions(userId, testId, questionsDto);
+    return this.testService.deleteTest(id, userId, role);
   }
 
   @Get(':id/questions')
-  @ApiOperation({ summary: 'Get test questions for students' })
-  @ApiResponse({
-    status: 200,
-    description: 'Questions retrieved successfully.',
-  })
-  @ApiResponse({ status: 403, description: 'No access to this test.' })
-  async getTestQuestions(
-    @User('id') userId: number,
+  @ApiOperation({ summary: 'Get all questions for a test' })
+  @ApiResponse({ status: 200, description: 'Returns questions for a test' })
+  async getQuestionsByTest(@Param('id', ParseIntPipe) testId: number) {
+    return this.testService.getQuestionsByTestId(testId);
+  }
+
+  @Post(':id/questions')
+  @ApiOperation({ summary: 'Add questions to a test (Teacher only)' })
+  @ApiResponse({ status: 201, description: 'Questions added successfully' })
+  async addQuestions(
     @Param('id', ParseIntPipe) testId: number,
+    @Body() dto: AddQuestionsDto,
+    @GetUser('id') userId: number,
+    @GetUser('role') role: UserRole,
   ) {
-    return this.testService.getTestQuestions(userId, testId);
+    return this.testService.addQuestions(testId, dto, userId, role);
+  }
+
+  @Patch('questions/:id')
+  @ApiOperation({ summary: 'Update a question in a test (Teacher only)' })
+  @ApiResponse({ status: 200, description: 'Question updated successfully' })
+  async updateQuestion(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateQuestionDto,
+    @GetUser('id') userId: number,
+    @GetUser('role') role: UserRole,
+  ) {
+    return this.testService.updateQuestion(id, dto, userId, role);
+  }
+
+  @Delete('questions/:id')
+  @ApiOperation({ summary: 'Remove a question from a test (Teacher only)' })
+  @ApiResponse({ status: 200, description: 'Question deleted successfully' })
+  async removeQuestion(
+    @Param('id', ParseIntPipe) id: number,
+    @GetUser('id') userId: number,
+    @GetUser('role') role: UserRole,
+  ) {
+    return this.testService.removeQuestion(id, userId, role);
   }
 }

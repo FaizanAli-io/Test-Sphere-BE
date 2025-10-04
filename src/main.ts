@@ -32,33 +32,5 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3000;
   await app.listen(port, '0.0.0.0');
-
-  if (process.env.NODE_ENV === 'development') fetchTokens();
 }
 bootstrap();
-
-async function fetchTokens() {
-  const baseURL = 'http://localhost:3000/auth/login';
-
-  const users = [
-    { email: 'learn@mailinator.com', password: '1234567' },
-    { email: 'teach@mailinator.com', password: '1234567' },
-  ];
-
-  const tokens = {};
-
-  for (const user of users) {
-    const res = await fetch(baseURL, {
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(user),
-      method: 'POST',
-    });
-
-    if (!res.ok) console.error(`${user.email} login failed: ${res.status}`);
-
-    const data = await res.json();
-    tokens[user.email] = data.token;
-  }
-
-  console.log(tokens);
-}

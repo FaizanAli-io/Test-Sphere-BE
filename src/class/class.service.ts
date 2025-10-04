@@ -27,7 +27,7 @@ export class ClassService {
   }
 
   async createClass(dto: CreateClassDto, userId: number, role: UserRole) {
-    if (role !== UserRole.teacher)
+    if (role !== UserRole.TEACHER)
       throw new ForbiddenException('Only teachers can create classes');
 
     return this.prisma.class.create({
@@ -41,7 +41,7 @@ export class ClassService {
   }
 
   async joinClass(dto: JoinClassDto, userId: number, role: UserRole) {
-    if (role !== UserRole.student)
+    if (role !== UserRole.STUDENT)
       throw new ForbiddenException('Only students can join classes');
 
     const found = await this.prisma.class.findUnique({
@@ -62,7 +62,7 @@ export class ClassService {
   }
 
   async getMyClasses(userId: number, role: UserRole) {
-    if (role === UserRole.teacher) {
+    if (role === UserRole.TEACHER) {
       return this.prisma.class.findMany({
         where: { teacherId: userId },
         include: { students: { include: { student: true } }, tests: true },
@@ -96,7 +96,7 @@ export class ClassService {
   ) {
     const cls = await this.prisma.class.findUnique({ where: { id } });
     if (!cls) throw new NotFoundException('Class not found');
-    if (role !== UserRole.teacher || cls.teacherId !== userId)
+    if (role !== UserRole.TEACHER || cls.teacherId !== userId)
       throw new ForbiddenException('You cannot edit this class');
 
     return this.prisma.class.update({
@@ -108,7 +108,7 @@ export class ClassService {
   async deleteClass(id: number, userId: number, role: UserRole) {
     const cls = await this.prisma.class.findUnique({ where: { id } });
     if (!cls) throw new NotFoundException('Class not found');
-    if (role !== UserRole.teacher || cls.teacherId !== userId)
+    if (role !== UserRole.TEACHER || cls.teacherId !== userId)
       throw new ForbiddenException('You cannot delete this class');
 
     await this.prisma.class.delete({ where: { id } });
@@ -123,7 +123,7 @@ export class ClassService {
   ) {
     const cls = await this.prisma.class.findUnique({ where: { id: classId } });
     if (!cls) throw new NotFoundException('Class not found');
-    if (role !== UserRole.teacher || cls.teacherId !== userId)
+    if (role !== UserRole.TEACHER || cls.teacherId !== userId)
       throw new ForbiddenException('Only teacher can remove students');
 
     await this.prisma.studentClass.delete({
@@ -133,7 +133,7 @@ export class ClassService {
   }
 
   async leaveClass(classId: number, userId: number, role: UserRole) {
-    if (role !== UserRole.student)
+    if (role !== UserRole.STUDENT)
       throw new ForbiddenException('Only students can leave classes');
 
     const record = await this.prisma.studentClass.findUnique({

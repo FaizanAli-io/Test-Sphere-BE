@@ -790,7 +790,7 @@
 //       const user = await this.prisma.user.findUnique({
 //         where: { id: userId },
 //       });
-//       return user?.role === UserRole.teacher;
+//       return user?.role === UserRole.TEACHER;
 //     }
 
 //     const user = await this.prisma.user.findUnique({
@@ -807,7 +807,7 @@
 
 //     if (!user) return false;
 
-//     if (user.role === UserRole.teacher) {
+//     if (user.role === UserRole.TEACHER) {
 //       return user.teacherClasses.length > 0;
 //     } else {
 //       return user.studentClasses.length > 0;

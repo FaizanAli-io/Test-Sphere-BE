@@ -9,39 +9,39 @@ datasource db {
 
 // Enums
 enum UserRole {
-  teacher
-  student
+  TEACHER
+  STUDENT
 }
 
 enum QuestionType {
-  TRUE_FALSE
   MULTIPLE_CHOICE
   SHORT_ANSWER
   LONG_ANSWER
+  TRUE_FALSE
 }
 
 enum TestStatus {
-  draft
-  published
-  closed
+  ACTIVE
+  CLOSED
+  DRAFT
 }
 
 enum SubmissionStatus {
-  in_progress
-  submitted
-  graded
+  IN_PROGRESS
+  SUBMITTED
+  GRADED
 }
 
 enum GradingStatus {
-  automatic
-  pending
-  graded
+  AUTOMATIC
+  PENDING
+  GRADED
 }
 
 enum LogType {
-  screenshot
-  webcam_photo
-  system_event
+  SCREENSHOT
+  WEBCAM_PHOTO
+  SYSTEM_EVENT
 }
 
 // Models
@@ -105,7 +105,7 @@ model Test {
   duration    Int
   startAt     DateTime
   endAt       DateTime
-  status      TestStatus @default(draft)
+  status      TestStatus @default(DRAFT)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -136,7 +136,7 @@ model Submission {
   id          Int              @id @default(autoincrement())
   userId      Int
   testId      Int
-  status      SubmissionStatus @default(in_progress)
+  status      SubmissionStatus @default(IN_PROGRESS)
   startedAt   DateTime
   submittedAt DateTime?
   gradedAt    DateTime?
@@ -160,7 +160,7 @@ model Answer {
   submissionId  Int
   answer        String        @db.Text
   obtainedMarks Float?
-  gradingStatus GradingStatus @default(pending)
+  gradingStatus GradingStatus @default(PENDING)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -8,6 +8,7 @@ import {
   IsArray,
   ValidateNested,
   Min,
+  ValidateIf,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { TestStatus, QuestionType } from '@prisma/client';
@@ -39,7 +40,7 @@ export class CreateTestDto {
   @IsDateString()
   endAt: string;
 
-  @ApiProperty({ enum: TestStatus, default: TestStatus.draft })
+  @ApiProperty({ enum: TestStatus, default: TestStatus.DRAFT })
   @IsOptional()
   @IsEnum(TestStatus)
   status?: TestStatus;
@@ -90,12 +91,24 @@ export class CreateQuestionDto {
   @IsEnum(QuestionType)
   type: QuestionType;
 
-  @ApiProperty({ type: [String] })
+  @ApiProperty({
+    type: [String],
+    required: false,
+    description: 'Required only for MULTIPLE_CHOICE questions',
+  })
+  @ValidateIf((o) => o.type === QuestionType.MULTIPLE_CHOICE)
   @IsArray()
-  options: string[];
+  options?: string[];
 
-  @ApiProperty({ required: false })
-  @IsOptional()
+  @ApiProperty({
+    required: false,
+    description: 'Required for MULTIPLE_CHOICE and TRUE_FALSE questions',
+  })
+  @ValidateIf(
+    (o) =>
+      o.type === QuestionType.MULTIPLE_CHOICE ||
+      o.type === QuestionType.TRUE_FALSE,
+  )
   @IsInt()
   correctAnswer?: number;
 
@@ -122,13 +135,24 @@ export class UpdateQuestionDto {
   @IsEnum(QuestionType)
   type?: QuestionType;
 
-  @ApiProperty({ required: false, type: [String] })
-  @IsOptional()
+  @ApiProperty({
+    required: false,
+    type: [String],
+    description: 'Required only if type is MULTIPLE_CHOICE',
+  })
+  @ValidateIf((o) => o.type === QuestionType.MULTIPLE_CHOICE)
   @IsArray()
   options?: string[];
 
-  @ApiProperty({ required: false })
-  @IsOptional()
+  @ApiProperty({
+    required: false,
+    description: 'Applicable only for MULTIPLE_CHOICE or TRUE_FALSE questions',
+  })
+  @ValidateIf(
+    (o) =>
+      o.type === QuestionType.MULTIPLE_CHOICE ||
+      o.type === QuestionType.TRUE_FALSE,
+  )
   @IsInt()
   correctAnswer?: number;
 

@@ -30,7 +30,7 @@ export class SignupDto {
 
   @ApiProperty({
     enum: UserRole,
-    example: UserRole.teacher,
+    example: UserRole.TEACHER,
     description: 'Role of the user',
   })
   @IsEnum(UserRole)

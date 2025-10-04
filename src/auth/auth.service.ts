@@ -27,7 +27,6 @@ export class AuthService {
     private emailService: EmailService,
   ) {}
 
-  // SIGNUP
   async signup(dto: SignupDto) {
     const existingUser = await this.prisma.user.findUnique({
       where: { email: dto.email },
@@ -45,7 +44,7 @@ export class AuthService {
         name: dto.name,
         email: dto.email,
         password: hashedPassword,
-        role: dto.role || UserRole.student,
+        role: dto.role || UserRole.STUDENT,
         uniqueIdentifier: dto.uniqueIdentifier,
         otpExpiry: new Date(Date.now() + 10 * 60 * 1000),
         otp,
@@ -56,7 +55,6 @@ export class AuthService {
     return { message: 'Signup successful, OTP sent to email.' };
   }
 
-  // VERIFY OTP
   async verifyOtp(dto: VerifyOtpDto) {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
@@ -81,7 +79,6 @@ export class AuthService {
     return { message: 'Account verified successfully.' };
   }
 
-  // LOGIN
   async login(dto: LoginDto) {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
@@ -98,7 +95,6 @@ export class AuthService {
     return { accessToken: token, user };
   }
 
-  // FORGOT PASSWORD
   async forgotPassword(dto: ForgotPasswordDto) {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
@@ -118,7 +114,6 @@ export class AuthService {
     return { message: 'OTP sent to your email for password reset.' };
   }
 
-  // RESET PASSWORD
   async resetPassword(dto: ResetPasswordDto) {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
@@ -142,7 +137,6 @@ export class AuthService {
     return { message: 'Password reset successful.' };
   }
 
-  // UTILITIES
   private generateOtp(): string {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }

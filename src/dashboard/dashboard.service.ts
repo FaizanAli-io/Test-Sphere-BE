@@ -16,7 +16,7 @@
 //       select: { id: true, name: true, email: true, role: true },
 //     });
 
-//     if (!user || user.role !== UserRole.student) {
+//     if (!user || user.role !== UserRole.STUDENT) {
 //       throw new ForbiddenException(
 //         'Access denied. Only students can access the dashboard.',
 //       );
@@ -131,7 +131,7 @@
 //       select: { id: true, name: true, email: true, role: true },
 //     });
 
-//     if (!user || user.role !== UserRole.teacher) {
+//     if (!user || user.role !== UserRole.TEACHER) {
 //       throw new ForbiddenException(
 //         'Access denied. Only teachers can access this dashboard.',
 //       );

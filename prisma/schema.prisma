@@ -159,7 +159,7 @@ model Answer {
   questionId    Int
   submissionId  Int
   answer        String        @db.Text
-  obtainedMarks Float?
+  obtainedMarks Int?
   gradingStatus GradingStatus @default(PENDING)
 
   createdAt DateTime @default(now())

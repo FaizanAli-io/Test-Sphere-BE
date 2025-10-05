@@ -7,7 +7,7 @@ import {
   VerifyOtpDto,
   ResetPasswordDto,
   ForgotPasswordDto,
-} from './dto';
+} from './auth.dto';
 import { AuthService } from './auth.service';
 
 @ApiTags('Authentication')

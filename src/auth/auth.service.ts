@@ -14,7 +14,7 @@ import {
   VerifyOtpDto,
   ResetPasswordDto,
   ForgotPasswordDto,
-} from './dto';
+} from './auth.dto';
 import { UserRole } from '@prisma/client';
 import { EmailService } from '../email/email.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -26,6 +26,8 @@ export class AuthService {
     private jwtService: JwtService,
     private emailService: EmailService,
   ) {}
+
+  OTP_LIFETIME = 10 * 60 * 1000; // 10 minutes in milliseconds
 
   async signup(dto: SignupDto) {
     const existingUser = await this.prisma.user.findUnique({
@@ -46,7 +48,7 @@ export class AuthService {
         password: hashedPassword,
         role: dto.role || UserRole.STUDENT,
         uniqueIdentifier: dto.uniqueIdentifier,
-        otpExpiry: new Date(Date.now() + 10 * 60 * 1000),
+        otpExpiry: new Date(Date.now() + this.OTP_LIFETIME),
         otp,
       },
     });
@@ -64,8 +66,25 @@ export class AuthService {
     if (!user.otp || !user.otpExpiry)
       throw new BadRequestException('No OTP generated');
     if (user.otp !== dto.otp) throw new BadRequestException('Invalid OTP');
-    if (user.otpExpiry < new Date())
-      throw new BadRequestException('OTP expired');
+
+    if (user.otpExpiry < new Date()) {
+      const newOtp = this.generateOtp();
+
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          otp: newOtp,
+          otpExpiry: new Date(Date.now() + this.OTP_LIFETIME),
+        },
+      });
+
+      await this.emailService.sendOtpEmail(user.email, newOtp);
+
+      return {
+        message: 'OTP expired. A new OTP has been sent to your email.',
+        otpResent: true,
+      };
+    }
 
     await this.prisma.user.update({
       where: { id: user.id },
@@ -76,7 +95,7 @@ export class AuthService {
       },
     });
 
-    return { message: 'Account verified successfully.' };
+    return { message: 'Account verified successfully.', verified: true };
   }
 
   async login(dto: LoginDto) {
@@ -106,7 +125,7 @@ export class AuthService {
       where: { id: user.id },
       data: {
         otp,
-        otpExpiry: new Date(Date.now() + 10 * 60 * 1000),
+        otpExpiry: new Date(Date.now() + this.OTP_LIFETIME),
       },
     });
 

@@ -8,7 +8,7 @@ import {
   UpdateTestDto,
   AddQuestionsDto,
   UpdateQuestionDto,
-} from '../src/test/dto/test.dto';
+} from '../src/test/test.dto';
 
 describe('TestService', () => {
   let service: TestService;

@@ -9,7 +9,7 @@ import {
   UpdateTestDto,
   AddQuestionsDto,
   UpdateQuestionDto,
-} from './dto/test.dto';
+} from './test.dto';
 import { UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 

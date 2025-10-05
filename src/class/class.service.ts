@@ -10,7 +10,7 @@ import {
   UpdateClassDto,
   JoinClassDto,
   KickStudentDto,
-} from './dto';
+} from './class.dto';
 import { UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 

@@ -102,13 +102,30 @@ describe('AuthService', () => {
       await expect(service.verifyOtp(dto)).rejects.toThrow(BadRequestException);
     });
 
-    it('should throw if OTP expired', async () => {
+    it('should handle expired OTP by resending a new one', async () => {
       mockPrisma.user.findUnique.mockResolvedValue({
         id: 1,
+        email: 'test@example.com',
         otp: '123456',
         otpExpiry: new Date(Date.now() - 1000),
       });
-      await expect(service.verifyOtp(dto)).rejects.toThrow(BadRequestException);
+
+      const result = await service.verifyOtp(dto);
+
+      expect(result).toEqual({
+        message: 'OTP expired. A new OTP has been sent to your email.',
+        otpResent: true,
+      });
+
+      expect(mockPrisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 1 },
+          data: expect.objectContaining({
+            otp: expect.any(String),
+            otpExpiry: expect.any(Date),
+          }),
+        }),
+      );
     });
 
     it('should verify successfully', async () => {

@@ -21,7 +21,7 @@ import {
   JoinClassDto,
   UpdateClassDto,
   KickStudentDto,
-} from './dto';
+} from './class.dto';
 import { UserRole } from '@prisma/client';
 import { ClassService } from './class.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';

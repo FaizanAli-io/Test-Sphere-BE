@@ -4,9 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { TestModule } from './test/test.module';
 import { ClassModule } from './class/class.module';
-// import { UploadModule } from './upload/upload.module';
-// import { DownloadModule } from './download/download.module';
-// import { DashboardModule } from './dashboard/dashboard.module';
+import { SubmissionModule } from './submission/submission.module';
 
 import { AppService } from './app.service';
 import { AppController } from './app.controller';
@@ -18,9 +16,7 @@ import { PrismaModule } from './prisma/prisma.module';
     AuthModule,
     TestModule,
     ClassModule,
-    // UploadModule,
-    // DownloadModule,
-    // DashboardModule,
+    SubmissionModule,
     PrismaModule,
   ],
   controllers: [AppController],

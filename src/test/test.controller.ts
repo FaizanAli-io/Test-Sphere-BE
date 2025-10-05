@@ -21,7 +21,7 @@ import {
   UpdateTestDto,
   AddQuestionsDto,
   UpdateQuestionDto,
-} from './dto/test.dto';
+} from './test.dto';
 import { UserRole } from '@prisma/client';
 import { TestService } from './test.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';

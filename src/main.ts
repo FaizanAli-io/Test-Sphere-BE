@@ -15,23 +15,21 @@ async function bootstrap() {
     }),
   );
 
-  if (process.env.NODE_ENV !== 'production') {
-    const config = new DocumentBuilder()
-      .setTitle('Test Sphere API')
-      .setDescription(
-        'API Documentation for Test Sphere - An AI-Powered Test Management System',
-      )
-      .setVersion('1.0')
-      .addBearerAuth()
-      .build();
+  const config = new DocumentBuilder()
+    .setTitle('Test Sphere API')
+    .setDescription(
+      'API Documentation for Test Sphere - An AI-Powered Test Management System',
+    )
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
 
-    const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('api', app, document);
-  }
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api', app, document);
 
   app.enableCors();
 
-  const port = process.env.PORT || 5000;
+  const port = process.env.PORT || 3000;
   await app.listen(port, '0.0.0.0');
 }
 bootstrap();

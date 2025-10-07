@@ -1,5 +1,5 @@
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { Body, Controller, Post, HttpCode, HttpStatus } from '@nestjs/common';
+import { Body, Post, HttpCode, HttpStatus, Controller } from '@nestjs/common';
 
 import {
   LoginDto,

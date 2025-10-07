@@ -46,19 +46,17 @@ enum LogType {
 
 // Models
 model User {
-  id               Int      @id @default(autoincrement())
-  email            String   @unique
-  password         String
-  name             String
+  id               Int       @id @default(autoincrement())
+  email            String    @unique
+  firebaseId       String?   @unique
+  uniqueIdentifier String    @unique @db.VarChar(20)
   role             UserRole
-  uniqueIdentifier String   @unique @db.VarChar(20)
-  profileImage     String?  @db.VarChar(255)
-
-  otp            String?   @db.VarChar(6)
-  otpExpiry      DateTime?
-  otpLastAttempt DateTime?
-  otpAttempts    Int       @default(0)
-  verified       Boolean   @default(false)
+  name             String
+  password         String?
+  profileImage     String?   @db.VarChar(255)
+  verified         Boolean   @default(false)
+  otp              String?   @db.VarChar(6)
+  otpExpiry        DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -177,9 +175,9 @@ model Answer {
 model ProctoringLog {
   id           Int      @id @default(autoincrement())
   submissionId Int
+  meta         Json?
   logType      LogType
   timestamp    DateTime @default(now())
-  meta         Json?
 
   submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 

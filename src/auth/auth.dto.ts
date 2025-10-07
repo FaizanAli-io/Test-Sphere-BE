@@ -7,23 +7,27 @@ import {
   IsString,
   Length,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 import { UserRole } from '@prisma/client';
 
 export class SignupDto {
-  @ApiProperty({
-    example: 'teacher1@example.com',
-    description: 'Unique email of the user',
-  })
+  @ApiProperty({ example: 'teacher1@example.com' })
   @IsEmail()
   email: string;
 
-  @ApiProperty({ example: 'securePassword123', minLength: 6 })
+  @ApiProperty({ example: 'securePassword123', required: false })
+  @ValidateIf((o) => !o.firebaseId)
   @IsString()
   @MinLength(6)
-  password: string;
+  password?: string;
 
-  @ApiProperty({ example: 'Faizan Ali', description: 'Full name of the user' })
+  @ApiProperty({ example: 'firebase-uid-123', required: false })
+  @ValidateIf((o) => !o.password)
+  @IsString()
+  firebaseId?: string;
+
+  @ApiProperty({ example: 'Faizan Ali' })
   @IsString()
   @IsNotEmpty()
   name: string;
@@ -55,10 +59,16 @@ export class LoginDto {
   @IsEmail()
   email: string;
 
-  @ApiProperty({ example: 'securePassword123', minLength: 6 })
+  @ApiProperty({ example: 'securePassword123', required: false })
+  @ValidateIf((o) => !o.firebaseId)
   @IsString()
   @MinLength(6)
-  password: string;
+  password?: string;
+
+  @ApiProperty({ example: 'firebase-uid-123', required: false })
+  @ValidateIf((o) => !o.password)
+  @IsString()
+  firebaseId?: string;
 }
 
 export class VerifyOtpDto {

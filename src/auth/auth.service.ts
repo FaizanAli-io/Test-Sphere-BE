@@ -29,6 +29,22 @@ export class AuthService {
 
   OTP_LIFETIME = 10 * 60 * 1000; // 10 minutes in milliseconds
 
+  private generateOtp(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
+  private async signToken(
+    userId: number,
+    email: string,
+    role: UserRole,
+  ): Promise<string> {
+    const payload = { sub: userId, email, role };
+    return this.jwtService.signAsync(payload, {
+      expiresIn: '7d',
+      secret: process.env.JWT_SECRET,
+    });
+  }
+
   async signup(dto: SignupDto) {
     const existingUser = await this.prisma.user.findUnique({
       where: { email: dto.email },
@@ -222,19 +238,22 @@ export class AuthService {
     return { message: 'Password reset successful.' };
   }
 
-  private generateOtp(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
-  }
-
-  private async signToken(
-    userId: number,
-    email: string,
-    role: UserRole,
-  ): Promise<string> {
-    const payload = { sub: userId, email, role };
-    return this.jwtService.signAsync(payload, {
-      expiresIn: '7d',
-      secret: process.env.JWT_SECRET,
+  async getProfile(userId: number) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        role: true,
+        email: true,
+        verified: true,
+        createdAt: true,
+        profileImage: true,
+        uniqueIdentifier: true,
+      },
     });
+
+    if (!user) throw new NotFoundException('User not found');
+    return user;
   }
 }

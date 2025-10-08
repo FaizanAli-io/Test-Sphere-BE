@@ -1,5 +1,18 @@
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
-import { Body, Post, HttpCode, HttpStatus, Controller } from '@nestjs/common';
+import {
+  ApiTags,
+  ApiResponse,
+  ApiOperation,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
+import {
+  Get,
+  Post,
+  Body,
+  HttpCode,
+  UseGuards,
+  HttpStatus,
+  Controller,
+} from '@nestjs/common';
 
 import {
   LoginDto,
@@ -9,6 +22,8 @@ import {
   ForgotPasswordDto,
 } from './auth.dto';
 import { AuthService } from './auth.service';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { GetUser } from '../common/decorators/get-user.decorator';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -64,5 +79,18 @@ export class AuthController {
   @ApiResponse({ status: 404, description: 'User not found.' })
   async resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
+  }
+
+  @Get('me')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Get current logged-in user profile' })
+  @ApiResponse({ status: 200, description: 'Returns user profile info.' })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized. Invalid or missing token.',
+  })
+  async getMe(@GetUser('id') userId: number) {
+    return this.authService.getProfile(userId);
   }
 }

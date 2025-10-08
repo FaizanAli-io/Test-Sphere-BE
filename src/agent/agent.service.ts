@@ -1,5 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import pdfParse from 'pdf-parse';
 import { ConfigService } from '@nestjs/config';
+import { Injectable, BadRequestException } from '@nestjs/common';
+
+import { generateStructuredQuestions } from './question-helpers';
 
 @Injectable()
 export class AgentService {
@@ -53,5 +56,38 @@ export class AgentService {
     }
 
     res.end();
+  }
+
+  async generateQuestionsFromPrompt(prompt: string) {
+    const questions = await generateStructuredQuestions(prompt);
+
+    return {
+      message: `Successfully generated ${questions.length} questions.`,
+      questions: questions,
+    };
+  }
+
+  async generateQuestionsFromPdf(fileBuffer: Buffer) {
+    try {
+      const data = await pdfParse(fileBuffer);
+      const text = data.text.trim();
+
+      if (!text || text.length < 50) {
+        throw new BadRequestException('PDF text is too short or empty.');
+      }
+
+      const prompt = `Generate questions based on the following content extracted from a PDF:\n\n${text}`;
+      const questions = await this.generateQuestionsFromPrompt(prompt);
+
+      return {
+        message: `Successfully generated ${questions.questions.length} questions from PDF.`,
+        questions: questions.questions,
+      };
+    } catch (error) {
+      console.error('PDF parsing error:', error);
+      throw new BadRequestException(
+        'Failed to read or process the uploaded PDF.',
+      );
+    }
   }
 }

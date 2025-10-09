@@ -1,10 +1,11 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsEmail,
+  IsUrl,
   IsEnum,
+  IsEmail,
+  IsString,
   IsNotEmpty,
   IsOptional,
-  IsString,
   Length,
   MinLength,
   ValidateIf,
@@ -102,4 +103,30 @@ export class ResetPasswordDto {
   @IsString()
   @MinLength(6)
   newPassword: string;
+}
+
+export class UpdateProfileDto {
+  @ApiPropertyOptional({
+    example: 'Faizan Ali',
+    description: 'Updated name of the user',
+  })
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @ApiPropertyOptional({
+    example: 'https://example.com/profile.jpg',
+    description: 'Profile image URL',
+  })
+  @IsOptional()
+  @IsUrl()
+  profileImage?: string;
+
+  @ApiPropertyOptional({
+    example: 'TCH123',
+    description: 'Unique identifier (e.g., teacher or student ID)',
+  })
+  @IsOptional()
+  @IsString()
+  uniqueIdentifier?: string;
 }

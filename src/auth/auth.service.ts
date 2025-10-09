@@ -12,6 +12,7 @@ import {
   LoginDto,
   SignupDto,
   VerifyOtpDto,
+  UpdateProfileDto,
   ResetPasswordDto,
   ForgotPasswordDto,
 } from './auth.dto';
@@ -255,5 +256,31 @@ export class AuthService {
 
     if (!user) throw new NotFoundException('User not found');
     return user;
+  }
+
+  async updateProfile(userId: number, dto: UpdateProfileDto) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        name: dto.name ?? user.name,
+        profileImage: dto.profileImage ?? user.profileImage,
+        uniqueIdentifier: dto.uniqueIdentifier ?? user.uniqueIdentifier,
+      },
+      select: {
+        id: true,
+        name: true,
+        role: true,
+        email: true,
+        verified: true,
+        createdAt: true,
+        profileImage: true,
+        uniqueIdentifier: true,
+      },
+    });
+
+    return updatedUser;
   }
 }

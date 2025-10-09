@@ -7,6 +7,7 @@ import {
 import {
   Get,
   Post,
+  Patch,
   Body,
   HttpCode,
   UseGuards,
@@ -18,6 +19,7 @@ import {
   LoginDto,
   SignupDto,
   VerifyOtpDto,
+  UpdateProfileDto,
   ResetPasswordDto,
   ForgotPasswordDto,
 } from './auth.dto';
@@ -92,5 +94,21 @@ export class AuthController {
   })
   async getMe(@GetUser('id') userId: number) {
     return this.authService.getProfile(userId);
+  }
+
+  @Patch('me')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Update current logged-in user profile' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns updated user profile info.',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized. Invalid or missing token.',
+  })
+  async updateMe(@GetUser('id') userId: number, @Body() dto: UpdateProfileDto) {
+    return this.authService.updateProfile(userId, dto);
   }
 }

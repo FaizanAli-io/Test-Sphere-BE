@@ -6,12 +6,12 @@ import { ConfigService } from '@nestjs/config';
 export class UploadService {
   constructor(private readonly config: ConfigService) {}
 
-  private get privateKey() {
-    return this.config.get<string>('IMAGEKIT_PRIVATE_KEY', '');
-  }
-
   private get publicKey() {
     return this.config.get<string>('IMAGEKIT_PUBLIC_KEY', '');
+  }
+
+  private get privateKey() {
+    return this.config.get<string>('IMAGEKIT_PRIVATE_KEY', '');
   }
 
   private get urlEndpoint() {
@@ -19,14 +19,17 @@ export class UploadService {
   }
 
   generateSignature() {
-    const timestamp = Math.floor(Date.now() / 1000);
-    const hashValue = timestamp + this.privateKey;
-    const signature = crypto.createHash('sha1').update(hashValue).digest('hex');
+    const token = crypto.randomBytes(16).toString('hex');
+    const expire = Math.floor(Date.now() / 1000) + 300;
+    const signature = crypto
+      .createHmac('sha1', this.privateKey)
+      .update(token + expire)
+      .digest('hex');
 
     return {
+      token,
+      expire,
       signature,
-      expire: timestamp,
-      token: crypto.randomBytes(16).toString('hex'),
       publicKey: this.publicKey,
       urlEndpoint: this.urlEndpoint,
     };

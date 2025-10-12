@@ -160,4 +160,65 @@ export class SubmissionService {
       orderBy: { submittedAt: 'desc' },
     });
   }
+
+  async getSubmissionsByStudent(studentId: number) {
+    const student = await this.prisma.user.findUnique({
+      where: { id: studentId },
+    });
+    if (!student) throw new NotFoundException('Student not found');
+
+    const submissions = await this.prisma.submission.findMany({
+      where: {
+        userId: studentId,
+      },
+      include: {
+        test: {
+          select: {
+            id: true,
+            title: true,
+            duration: true,
+            startAt: true,
+            endAt: true,
+            class: {
+              select: { id: true, name: true },
+            },
+          },
+        },
+        answers: {
+          include: {
+            question: true,
+          },
+        },
+      },
+      orderBy: { submittedAt: 'desc' },
+    });
+
+    return submissions;
+  }
+
+  async getSubmission(teacherId: number, submissionId: number) {
+    const submission = await this.prisma.submission.findUnique({
+      where: { id: submissionId },
+      include: {
+        test: {
+          include: {
+            class: true,
+            questions: true,
+          },
+        },
+        user: { select: { id: true, name: true, email: true } },
+        answers: {
+          include: {
+            question: true,
+          },
+        },
+      },
+    });
+
+    if (!submission) throw new NotFoundException('Submission not found');
+    if (submission.test.class.teacherId !== teacherId)
+      throw new ForbiddenException('Not authorized to view this submission');
+
+    return submission;
+  }
 }

@@ -28,7 +28,7 @@ export class AuthService {
     private emailService: EmailService,
   ) {}
 
-  OTP_LIFETIME = 10 * 60 * 1000; // 10 minutes in milliseconds
+  OTP_LIFETIME = 10 * 60 * 1000;
 
   private generateOtp(): string {
     return Math.floor(100000 + Math.random() * 900000).toString();
@@ -52,32 +52,79 @@ export class AuthService {
     });
 
     if (existingUser) {
-      if (existingUser.firebaseId) {
-        throw new ConflictException(
-          'Account already exists and is linked to Google/Firebase login.',
+      if (existingUser.firebaseId && dto.password && !existingUser.password) {
+        const hashedPassword = await bcrypt.hash(dto.password, 10);
+
+        const updatedUser = await this.prisma.user.update({
+          data: { password: hashedPassword },
+          where: { email: dto.email },
+        });
+
+        const token = await this.signToken(
+          updatedUser.id,
+          updatedUser.email,
+          updatedUser.role,
         );
+
+        return {
+          message:
+            'Password linked successfully. You can now log in with email or Google.',
+          accessToken: token,
+          user: updatedUser,
+        };
       }
-      if (existingUser.verified) {
+
+      if (existingUser.password && dto.firebaseId && !existingUser.firebaseId) {
+        const updatedUser = await this.prisma.user.update({
+          data: { firebaseId: dto.firebaseId, verified: true },
+          where: { email: dto.email },
+        });
+
+        const token = await this.signToken(
+          updatedUser.id,
+          updatedUser.email,
+          updatedUser.role,
+        );
+
+        return {
+          message:
+            'Google account linked successfully. You can now log in with email or Google.',
+          accessToken: token,
+          user: updatedUser,
+        };
+      }
+
+      if (existingUser.firebaseId && dto.firebaseId)
+        throw new ConflictException(
+          'Account already exists and linked to Google login.',
+        );
+
+      if (existingUser.password && dto.password)
+        throw new ConflictException(
+          'Account already exists and linked to password login.',
+        );
+
+      if (existingUser.verified)
         throw new ConflictException('Account already registered and verified.');
-      }
+
       throw new ConflictException(
         'Account already registered but not verified.',
       );
     }
 
-    // 🔹 Case 1: Firebase signup (instant verify, no OTP)
     if (dto.firebaseId) {
       const user = await this.prisma.user.create({
         data: {
-          email: dto.email,
-          firebaseId: dto.firebaseId,
+          verified: true,
           name: dto.name,
           role: dto.role,
-          uniqueIdentifier: dto.uniqueIdentifier,
+          email: dto.email,
+          firebaseId: dto.firebaseId,
           profileImage: dto.profileImage,
-          verified: true,
+          uniqueIdentifier: dto.uniqueIdentifier,
         },
       });
+
       const token = await this.signToken(user.id, user.email, user.role);
       return {
         message: 'Signup successful via Firebase. Account verified.',
@@ -86,25 +133,22 @@ export class AuthService {
       };
     }
 
-    // 🔹 Case 2: Password-based signup (OTP verification required)
-    if (!dto.password) {
+    if (!dto.password)
       throw new BadRequestException('Password is required for email signup.');
-    }
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
-
     const otp = this.generateOtp();
 
     const user = await this.prisma.user.create({
       data: {
         name: dto.name,
+        role: dto.role,
         email: dto.email,
         password: hashedPassword,
-        role: dto.role,
-        uniqueIdentifier: dto.uniqueIdentifier,
         profileImage: dto.profileImage,
-        otp,
+        uniqueIdentifier: dto.uniqueIdentifier,
         otpExpiry: new Date(Date.now() + this.OTP_LIFETIME),
+        otp,
       },
     });
 
@@ -121,8 +165,10 @@ export class AuthService {
     });
 
     if (!user) throw new NotFoundException('User not found');
+
     if (!user.otp || !user.otpExpiry)
       throw new BadRequestException('No OTP generated');
+
     if (user.otp !== dto.otp) throw new BadRequestException('Invalid OTP');
 
     if (user.otpExpiry < new Date()) {
@@ -163,21 +209,24 @@ export class AuthService {
 
     if (!user) throw new NotFoundException('Invalid credentials');
 
-    // 🔹 Firebase-based login
     if (dto.firebaseId) {
-      if (user.firebaseId !== dto.firebaseId) {
-        throw new UnauthorizedException('Invalid Firebase ID for this account');
-      }
+      if (!user.firebaseId)
+        throw new UnauthorizedException(
+          'No Google Login exists for this account',
+        );
 
-      if (!user.verified) {
+      if (user.firebaseId !== dto.firebaseId)
+        throw new UnauthorizedException(
+          'Invalid Google Login for this account',
+        );
+
+      if (!user.verified)
         throw new UnauthorizedException('Account not verified');
-      }
 
       const token = await this.signToken(user.id, user.email, user.role);
       return { accessToken: token, user };
     }
 
-    // 🔹 Password-based login
     if (!dto.password) throw new BadRequestException('Password is required');
     if (!user.verified)
       throw new UnauthorizedException(

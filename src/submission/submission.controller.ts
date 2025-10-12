@@ -83,4 +83,32 @@ export class SubmissionController {
       throw new Error('Only teachers can view test submissions');
     return this.submissionService.getSubmissionsForTest(teacherId, testId);
   }
+
+  @Get('student')
+  @ApiOperation({ summary: 'Get all submissions for a student (Student only)' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of student submissions returned',
+  })
+  async getMySubmissions(
+    @GetUser('id') userId: number,
+    @GetUser('role') role: UserRole,
+  ) {
+    if (role !== UserRole.STUDENT)
+      throw new Error('Only students can view their own submissions');
+    return this.submissionService.getSubmissionsByStudent(userId);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get a single submission by ID (Teacher only)' })
+  @ApiResponse({ status: 200, description: 'Submission details returned' })
+  async getSubmission(
+    @Param('id', ParseIntPipe) submissionId: number,
+    @GetUser('id') teacherId: number,
+    @GetUser('role') role: UserRole,
+  ) {
+    if (role !== UserRole.TEACHER)
+      throw new Error('Only teachers can view submissions');
+    return this.submissionService.getSubmission(teacherId, submissionId);
+  }
 }

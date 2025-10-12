@@ -9,8 +9,13 @@ export class LoggerMiddleware implements NestMiddleware {
 
     res.on('finish', () => {
       const duration = Date.now() - start;
+      const currentTime = new Date().toLocaleTimeString('en-PK', {
+        timeZone: 'Asia/Karachi',
+        hour12: true,
+      });
+
       console.log(
-        `📥 ${method} ${originalUrl} → ${res.statusCode} (${duration}ms)`,
+        `📥 [${currentTime}] ${method} ${originalUrl} → ${res.statusCode} (${duration}ms)`,
       );
     });
 

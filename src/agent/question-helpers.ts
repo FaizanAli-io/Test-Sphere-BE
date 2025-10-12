@@ -6,6 +6,7 @@ export interface GeneratedQuestion {
   options?: string[]; // Only for MULTIPLE_CHOICE
   correctAnswer?: number; // Index for MCQs or 0/1 for TRUE_FALSE
   maxMarks?: number;
+  image?: string;
 }
 
 const client = new OpenAI({
@@ -28,19 +29,51 @@ export async function generateStructuredQuestions(
     messages: [
       {
         role: 'system',
-        content: `You are an educational content generator for a school testing platform.
-Output valid JSON ONLY that follows the provided schema strictly.
-Rules:
-- Include 'options' ONLY for MULTIPLE_CHOICE questions.
-- 'correctAnswer' is an index. For MCQs it starts at 0, TRUE_FALSE: 0 for False, 1 for True.
-- Include 'correctAnswer' ONLY for MULTIPLE_CHOICE and TRUE_FALSE questions. 
-- LONG_ANSWER and SHORT_ANSWER questions do NOT have options or correctAnswer.
-- Each question must be realistic and suitable for academic testing.`,
+        content: `
+You are a professional academic question generator for a school testing system.
+
+### OBJECTIVE:
+Generate questions that follow the user's prompt *exactly* and do not deviate in:
+- Number of questions
+- Question type(s)
+- Topic or subject
+- Mark allocation
+- Formatting or numbering (if specified)
+
+### RULES:
+1. **Follow the user's prompt literally.**  
+   - If they ask for 4 MCQs, generate 4 MCQs only — not any other type.
+   - If they specify marks, include them exactly as stated.
+   - If they specify question numbering or a topic, match it precisely.
+
+2. **Never add your own interpretation** or variety unless explicitly requested.
+3. **Output JSON ONLY** following the schema strictly — no text, no explanations.
+4. **Include "options" only for MULTIPLE_CHOICE.**
+5. **Include "correctAnswer" only for MULTIPLE_CHOICE and TRUE_FALSE.**
+6. **For TRUE_FALSE:** correctAnswer = 0 (False) or 1 (True).
+7. **For SHORT_ANSWER / LONG_ANSWER:** omit "options" and "correctAnswer".
+8. Each question must be clear, realistic, and academically relevant.
+9. If the prompt mentions images or diagrams, include an image URL field (may be empty string if unspecified).
+
+### OUTPUT FORMAT:
+Return valid JSON strictly under this structure:
+{
+  "questions": [
+    {
+      "text": string,
+      "type": "MULTIPLE_CHOICE" | "TRUE_FALSE" | "SHORT_ANSWER" | "LONG_ANSWER",
+      "options"?: string[],
+      "correctAnswer"?: number,
+      "maxMarks"?: number,
+      "image"?: string
+    }
+  ]
+}
+        `,
       },
       {
         role: 'user',
-        content: `${prompt}.
-Return your response as a JSON object under { "questions": [...] }`,
+        content: `USER PROMPT: ${prompt}`,
       },
     ],
     response_format: {

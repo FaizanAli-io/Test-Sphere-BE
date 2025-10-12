@@ -125,11 +125,11 @@ export class CreateQuestionDto {
   @IsInt()
   correctAnswer?: number;
 
-  @ApiProperty({ required: false, example: 5 })
+  @ApiProperty({ example: 5 })
   @IsOptional()
   @IsInt()
   @Min(1)
-  maxMarks?: number;
+  maxMarks: number;
 
   @ApiProperty({
     required: false,

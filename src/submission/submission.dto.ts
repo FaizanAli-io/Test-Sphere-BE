@@ -1,13 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsInt,
+  IsEnum,
   IsArray,
-  ValidateNested,
+  IsNumber,
   IsString,
   IsOptional,
-  IsNumber,
+  ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { SubmissionStatus } from '@prisma/client';
 
 export class StartSubmissionDto {
   @ApiProperty({ example: 1, description: 'ID of the test to start' })
@@ -22,10 +24,12 @@ export class AnswerDto {
 
   @ApiProperty({
     example: '2',
+    nullable: true,
     description: 'The selected answer or text response',
   })
   @IsString()
-  answer: string;
+  @IsOptional()
+  answer: string | null;
 }
 
 export class SubmitTestDto {
@@ -58,4 +62,10 @@ export class GradeSubmissionDto {
   @ValidateNested({ each: true })
   @Type(() => GradeAnswerDto)
   answers: GradeAnswerDto[];
+}
+
+export class UpdateSubmissionStatusDto {
+  @ApiProperty({ enum: SubmissionStatus, example: SubmissionStatus.GRADED })
+  @IsEnum(SubmissionStatus)
+  status: SubmissionStatus;
 }

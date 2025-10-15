@@ -103,8 +103,6 @@ export class TestService {
       where: { testId },
     });
 
-    if (!questions.length)
-      throw new NotFoundException('No questions found for this test.');
     return questions;
   }
 

@@ -63,7 +63,7 @@ describe('AuthService', () => {
       email: 'john@example.com',
       password: 'password',
       role: UserRole.STUDENT,
-      uniqueIdentifier: 'ABC123',
+      cnic: 'ABC123',
     };
 
     it('should throw if email already exists', async () => {

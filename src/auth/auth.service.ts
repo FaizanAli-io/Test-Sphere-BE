@@ -121,7 +121,7 @@ export class AuthService {
           email: dto.email,
           firebaseId: dto.firebaseId,
           profileImage: dto.profileImage,
-          uniqueIdentifier: dto.uniqueIdentifier,
+          cnic: dto.cnic,
         },
       });
 
@@ -146,7 +146,7 @@ export class AuthService {
         email: dto.email,
         password: hashedPassword,
         profileImage: dto.profileImage,
-        uniqueIdentifier: dto.uniqueIdentifier,
+        cnic: dto.cnic,
         otpExpiry: new Date(Date.now() + this.OTP_LIFETIME),
         otp,
       },
@@ -299,7 +299,7 @@ export class AuthService {
         verified: true,
         createdAt: true,
         profileImage: true,
-        uniqueIdentifier: true,
+        cnic: true,
       },
     });
 
@@ -316,7 +316,7 @@ export class AuthService {
       data: {
         name: dto.name ?? user.name,
         profileImage: dto.profileImage ?? user.profileImage,
-        uniqueIdentifier: dto.uniqueIdentifier ?? user.uniqueIdentifier,
+        cnic: dto.cnic ?? user.cnic,
       },
       select: {
         id: true,
@@ -326,7 +326,7 @@ export class AuthService {
         verified: true,
         createdAt: true,
         profileImage: true,
-        uniqueIdentifier: true,
+        cnic: true,
       },
     });
 

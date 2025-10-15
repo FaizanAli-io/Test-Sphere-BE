@@ -22,6 +22,33 @@ import { PrismaService } from '../prisma/prisma.service';
 export class SubmissionService {
   constructor(private prisma: PrismaService) {}
 
+  private readonly submissionDetailsInclude = {
+    user: { select: { id: true, name: true, email: true } },
+    test: { include: { class: { select: { id: true, name: true } } } },
+    answers: { include: { question: true } },
+  } as const;
+
+  private async ensureTeacherOwnsSubmission(
+    teacherId: number,
+    submissionId: number,
+  ): Promise<boolean> {
+    const submission = await this.prisma.submission.findUnique({
+      where: { id: submissionId },
+      include: { test: { include: { class: true } } },
+    });
+    if (!submission) throw new NotFoundException('Submission not found');
+    if (submission.test.class.teacherId !== teacherId)
+      throw new ForbiddenException('Not authorized');
+    return true;
+  }
+
+  private async getSubmissionWithDetails(submissionId: number) {
+    return this.prisma.submission.findUnique({
+      include: this.submissionDetailsInclude,
+      where: { id: submissionId },
+    });
+  }
+
   async startTest(userId: number, dto: StartSubmissionDto) {
     const test = await this.prisma.test.findUnique({
       where: { id: dto.testId },
@@ -107,39 +134,36 @@ export class SubmissionService {
     submissionId: number,
     dto: GradeSubmissionDto,
   ) {
-    const submission = await this.prisma.submission.findUnique({
-      where: { id: submissionId },
-      include: {
-        test: {
-          include: { class: true },
-        },
-      },
-    });
-
-    if (!submission) throw new NotFoundException('Submission not found');
-    if (submission.test.class.teacherId !== teacherId)
-      throw new ForbiddenException('Not authorized to grade this submission');
+    await this.ensureTeacherOwnsSubmission(teacherId, submissionId);
 
     await Promise.all(
       dto.answers.map(async (a) =>
         this.prisma.answer.update({
           where: { id: a.answerId },
-          data: {
-            obtainedMarks: a.obtainedMarks,
-            gradingStatus: GradingStatus.GRADED,
-          },
+          data: { obtainedMarks: a.obtainedMarks },
         }),
       ),
     );
 
-    return this.prisma.submission.update({
-      where: { id: submissionId },
-      data: {
-        status: SubmissionStatus.GRADED,
-        gradedAt: new Date(),
-      },
-      include: { answers: true },
-    });
+    return this.getSubmissionWithDetails(submissionId);
+  }
+
+  async updateSubmissionStatus(
+    teacherId: number,
+    submissionId: number,
+    status: SubmissionStatus,
+  ) {
+    await this.ensureTeacherOwnsSubmission(teacherId, submissionId);
+
+    const data: any = { status };
+    if (status === SubmissionStatus.GRADED) {
+      data.gradedAt = new Date();
+    } else if (status === SubmissionStatus.SUBMITTED) {
+      data.gradedAt = null;
+    }
+
+    await this.prisma.submission.update({ where: { id: submissionId }, data });
+    return this.getSubmissionWithDetails(submissionId);
   }
 
   async getSubmissionsForTest(teacherId: number, testId: number) {
@@ -152,12 +176,9 @@ export class SubmissionService {
       throw new ForbiddenException('Not authorized');
 
     return this.prisma.submission.findMany({
-      where: { testId },
-      include: {
-        user: { select: { id: true, name: true, email: true } },
-        answers: true,
-      },
+      include: this.submissionDetailsInclude,
       orderBy: { submittedAt: 'desc' },
+      where: { testId },
     });
   }
 
@@ -168,57 +189,24 @@ export class SubmissionService {
     if (!student) throw new NotFoundException('Student not found');
 
     const submissions = await this.prisma.submission.findMany({
-      where: {
-        userId: studentId,
-      },
-      include: {
-        test: {
-          select: {
-            id: true,
-            title: true,
-            duration: true,
-            startAt: true,
-            endAt: true,
-            class: {
-              select: { id: true, name: true },
-            },
-          },
-        },
-        answers: {
-          include: {
-            question: true,
-          },
-        },
-      },
+      include: this.submissionDetailsInclude,
       orderBy: { submittedAt: 'desc' },
+      where: { userId: studentId },
     });
 
     return submissions;
   }
 
   async getSubmission(teacherId: number, submissionId: number) {
-    const submission = await this.prisma.submission.findUnique({
-      where: { id: submissionId },
-      include: {
-        test: {
-          include: {
-            class: true,
-            questions: true,
-          },
-        },
-        user: { select: { id: true, name: true, email: true } },
-        answers: {
-          include: {
-            question: true,
-          },
-        },
-      },
-    });
+    await this.ensureTeacherOwnsSubmission(teacherId, submissionId);
+    return this.getSubmissionWithDetails(submissionId);
+  }
 
-    if (!submission) throw new NotFoundException('Submission not found');
-    if (submission.test.class.teacherId !== teacherId)
-      throw new ForbiddenException('Not authorized to view this submission');
+  async deleteSubmission(teacherId: number, submissionId: number) {
+    await this.ensureTeacherOwnsSubmission(teacherId, submissionId);
+    await this.prisma.answer.deleteMany({ where: { submissionId } });
+    await this.prisma.submission.delete({ where: { id: submissionId } });
 
-    return submission;
+    return { success: true };
   }
 }

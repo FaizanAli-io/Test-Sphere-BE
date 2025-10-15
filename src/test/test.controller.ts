@@ -85,18 +85,18 @@ export class TestController {
     return this.testService.deleteTest(id, userId, role);
   }
 
-  @Get(':id/questions')
+  @Get(':testId/questions')
   @ApiOperation({ summary: 'Get all questions for a test' })
   @ApiResponse({ status: 200, description: 'Returns questions for a test' })
-  async getQuestionsByTest(@Param('id', ParseIntPipe) testId: number) {
+  async getQuestionsByTest(@Param('testId', ParseIntPipe) testId: number) {
     return this.testService.getQuestionsByTestId(testId);
   }
 
-  @Post(':id/questions')
+  @Post(':testId/questions')
   @ApiOperation({ summary: 'Add questions to a test (Teacher only)' })
   @ApiResponse({ status: 201, description: 'Questions added successfully' })
   async addQuestions(
-    @Param('id', ParseIntPipe) testId: number,
+    @Param('testId', ParseIntPipe) testId: number,
     @Body() dto: AddQuestionsDto,
     @GetUser('id') userId: number,
     @GetUser('role') role: UserRole,
@@ -104,26 +104,26 @@ export class TestController {
     return this.testService.addQuestions(testId, dto, userId, role);
   }
 
-  @Patch('questions/:id')
+  @Patch('questions/:questionId')
   @ApiOperation({ summary: 'Update a question in a test (Teacher only)' })
   @ApiResponse({ status: 200, description: 'Question updated successfully' })
   async updateQuestion(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('questionId', ParseIntPipe) questionId: number,
     @Body() dto: UpdateQuestionDto,
     @GetUser('id') userId: number,
     @GetUser('role') role: UserRole,
   ) {
-    return this.testService.updateQuestion(id, dto, userId, role);
+    return this.testService.updateQuestion(questionId, dto, userId, role);
   }
 
-  @Delete('questions/:id')
+  @Delete('questions/:questionId')
   @ApiOperation({ summary: 'Remove a question from a test (Teacher only)' })
   @ApiResponse({ status: 200, description: 'Question deleted successfully' })
   async removeQuestion(
-    @Param('id', ParseIntPipe) id: number,
+    @Param('questionId', ParseIntPipe) questionId: number,
     @GetUser('id') userId: number,
     @GetUser('role') role: UserRole,
   ) {
-    return this.testService.removeQuestion(id, userId, role);
+    return this.testService.removeQuestion(questionId, userId, role);
   }
 }

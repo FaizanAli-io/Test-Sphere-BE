@@ -46,17 +46,17 @@ enum LogType {
 
 // Models
 model User {
-  id               Int       @id @default(autoincrement())
-  email            String    @unique
-  firebaseId       String?   @unique
-  uniqueIdentifier String    @unique @db.VarChar(20)
-  role             UserRole
-  name             String
-  password         String?
-  profileImage     String?   @db.VarChar(255)
-  verified         Boolean   @default(false)
-  otp              String?   @db.VarChar(6)
-  otpExpiry        DateTime?
+  id           Int       @id @default(autoincrement())
+  email        String    @unique
+  firebaseId   String?   @unique
+  cnic         String    @unique @db.VarChar(20)
+  role         UserRole
+  name         String
+  password     String?
+  profileImage String?   @db.VarChar(255)
+  verified     Boolean   @default(false)
+  otp          String?   @db.VarChar(6)
+  otpExpiry    DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -156,7 +156,7 @@ model Answer {
   studentId     Int
   questionId    Int
   submissionId  Int
-  answer        String        @db.Text
+  answer        String?       @db.Text
   obtainedMarks Int?
   gradingStatus GradingStatus @default(PENDING)
 

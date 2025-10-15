@@ -7,10 +7,17 @@ import {
   IsNotEmpty,
   IsOptional,
   Length,
+  Matches,
   MinLength,
   ValidateIf,
 } from 'class-validator';
 import { UserRole } from '@prisma/client';
+
+function IsCnic() {
+  return Matches(/^\d{13}$/, {
+    message: 'CNIC must be a 13-digit number',
+  });
+}
 
 export class SignupDto {
   @ApiProperty({ example: 'teacher1@example.com' })
@@ -42,12 +49,12 @@ export class SignupDto {
   role: UserRole;
 
   @ApiProperty({
-    example: 'TCH123',
-    description: 'Unique identifier (roll no / teacher ID)',
+    example: '3520212345678',
+    description: '13-digit CNIC number (numbers only)',
   })
   @IsString()
-  @Length(3, 20)
-  uniqueIdentifier: string;
+  @IsCnic()
+  cnic: string;
 
   @ApiProperty({ example: 'https://example.com/profile.jpg', required: false })
   @IsOptional()
@@ -123,10 +130,10 @@ export class UpdateProfileDto {
   profileImage?: string;
 
   @ApiPropertyOptional({
-    example: 'TCH123',
-    description: 'Unique identifier (e.g., teacher or student ID)',
+    example: '3520212345678',
+    description: '13-digit CNIC number (numbers only)',
   })
   @IsOptional()
-  @IsString()
-  uniqueIdentifier?: string;
+  @IsCnic()
+  cnic?: string;
 }

@@ -87,6 +87,7 @@ model Class {
 model StudentClass {
   studentId Int
   classId   Int
+  approved  Boolean  @default(false)
   joinedAt  DateTime @default(now())
 
   student User  @relation(fields: [studentId], references: [id], onDelete: Cascade)

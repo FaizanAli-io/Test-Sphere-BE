@@ -171,7 +171,7 @@ export class SubmissionService {
     return this.prisma.submission.findMany({
       where: { testId },
       include: this.submissionInclude,
-      orderBy: { submittedAt: 'desc' },
+      orderBy: { submittedAt: 'asc' },
     });
   }
 

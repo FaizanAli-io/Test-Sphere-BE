@@ -41,8 +41,8 @@ export class JoinClassDto {
   code: string;
 }
 
-export class KickStudentDto {
-  @ApiProperty({ example: 2, description: 'ID of student to remove' })
+export class ManageStudentDto {
+  @ApiProperty({ example: 2, description: 'ID of student to manage' })
   @IsInt()
   @Min(1)
   studentId: number;

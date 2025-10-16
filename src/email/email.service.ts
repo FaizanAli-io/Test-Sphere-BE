@@ -1,6 +1,6 @@
+import * as nodemailer from 'nodemailer';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class EmailService {
@@ -10,15 +10,15 @@ export class EmailService {
     this.transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
+        user: this.configService.get('SMTP_USER'),
+        pass: this.configService.get('SMTP_PASS'),
       },
     });
   }
 
   async sendOtpEmail(email: string, otp: string): Promise<void> {
     await this.transporter.sendMail({
-      from: this.configService.get('EMAIL_USER'),
+      from: this.configService.get('SMTP_USER'),
       to: email,
       subject: 'Account Verification OTP',
       html: `
@@ -38,7 +38,7 @@ export class EmailService {
 
   async sendWelcomeEmail(email: string, name: string): Promise<void> {
     await this.transporter.sendMail({
-      from: this.configService.get('EMAIL_USER'),
+      from: this.configService.get('SMTP_USER'),
       to: email,
       subject: 'Welcome to Test Sphere',
       html: `
@@ -63,7 +63,7 @@ export class EmailService {
     const resetUrl = `${this.configService.get('FRONTEND_URL')}/reset-password?token=${resetToken}`;
 
     await this.transporter.sendMail({
-      from: this.configService.get('EMAIL_USER'),
+      from: this.configService.get('SMTP_USER'),
       to: email,
       subject: 'Password Reset Request',
       html: `

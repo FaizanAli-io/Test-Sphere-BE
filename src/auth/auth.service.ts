@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 
 import {
   LoginDto,
@@ -26,6 +27,7 @@ export class AuthService {
     private prisma: PrismaService,
     private jwtService: JwtService,
     private emailService: EmailService,
+    private configService: ConfigService,
   ) {}
 
   OTP_LIFETIME = 10 * 60 * 1000;
@@ -42,7 +44,7 @@ export class AuthService {
     const payload = { sub: userId, email, role };
     return this.jwtService.signAsync(payload, {
       expiresIn: '7d',
-      secret: process.env.JWT_SECRET,
+      secret: this.configService.get('JWT_SECRET'),
     });
   }
 

@@ -2,35 +2,74 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
-
 import {
   CreateTestDto,
   UpdateTestDto,
   AddQuestionsDto,
   UpdateQuestionDto,
 } from './test.dto';
-import { UserRole } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class TestService {
   constructor(private prisma: PrismaService) {}
 
-  parseDate = (d?: string) => (d ? new Date(d) : undefined);
-
-  async createTest(dto: CreateTestDto, userId: number, role: UserRole) {
-    if (role !== UserRole.TEACHER) {
-      throw new ForbiddenException('Only teachers can create tests.');
-    }
-
+  private async ensureTeacherOwnsClass(userId: number, classId: number) {
     const classEntity = await this.prisma.class.findUnique({
-      where: { id: dto.classId },
+      where: { id: classId },
+      select: { teacherId: true },
     });
 
     if (!classEntity) throw new NotFoundException('Class not found.');
     if (classEntity.teacherId !== userId)
-      throw new ForbiddenException('You are not the owner of this class.');
+      throw new ForbiddenException('You are not authorized for this class.');
+  }
+
+  private async ensureTeacherOwnsTest(userId: number, testId: number) {
+    const test = await this.prisma.test.findUnique({
+      where: { id: testId },
+      include: { class: { select: { teacherId: true } } },
+    });
+
+    if (!test) throw new NotFoundException('Test not found.');
+    if (test.class.teacherId !== userId)
+      throw new ForbiddenException('You cannot modify this test.');
+
+    return test;
+  }
+
+  private async ensureTeacherOwnsQuestion(userId: number, questionId: number) {
+    const question = await this.prisma.question.findUnique({
+      where: { id: questionId },
+      include: {
+        test: {
+          include: { class: { select: { teacherId: true } } },
+        },
+      },
+    });
+
+    if (!question) throw new NotFoundException('Question not found.');
+    if (question.test.class.teacherId !== userId)
+      throw new ForbiddenException('You cannot modify this question.');
+
+    return question;
+  }
+
+  private validateDates(startAt?: string, endAt?: string) {
+    if (startAt && endAt && new Date(startAt) >= new Date(endAt)) {
+      throw new BadRequestException('End date must be after start date.');
+    }
+  }
+
+  private parseDate(date?: string) {
+    return date ? new Date(date) : undefined;
+  }
+
+  async createTest(dto: CreateTestDto, userId: number) {
+    await this.ensureTeacherOwnsClass(userId, dto.classId);
+    this.validateDates(dto.startAt, dto.endAt);
 
     return this.prisma.test.create({
       data: {
@@ -44,7 +83,11 @@ export class TestService {
   async getTestById(id: number) {
     const test = await this.prisma.test.findUnique({
       where: { id },
-      include: { questions: true },
+      include: {
+        questions: {
+          select: { id: true, text: true, type: true, maxMarks: true },
+        },
+      },
     });
 
     if (!test) throw new NotFoundException('Test not found.');
@@ -54,25 +97,21 @@ export class TestService {
   async getTestsByClassId(classId: number) {
     return this.prisma.test.findMany({
       where: { classId },
-      include: { questions: true },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        startAt: true,
+        endAt: true,
+        createdAt: true,
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
 
-  async updateTest(
-    id: number,
-    dto: UpdateTestDto,
-    userId: number,
-    role: UserRole,
-  ) {
-    const test = await this.prisma.test.findUnique({
-      where: { id },
-      include: { class: true },
-    });
-
-    if (!test) throw new NotFoundException('Test not found.');
-    if (role !== UserRole.TEACHER || test.class.teacherId !== userId)
-      throw new ForbiddenException('You are not allowed to edit this test.');
+  async updateTest(id: number, dto: UpdateTestDto, userId: number) {
+    await this.ensureTeacherOwnsTest(userId, id);
+    this.validateDates(dto.startAt, dto.endAt);
 
     return this.prisma.test.update({
       where: { id },
@@ -84,69 +123,48 @@ export class TestService {
     });
   }
 
-  async deleteTest(id: number, userId: number, role: UserRole) {
-    const test = await this.prisma.test.findUnique({
-      where: { id },
-      include: { class: true },
+  async deleteTest(id: number, userId: number) {
+    await this.ensureTeacherOwnsTest(userId, id);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.answer.deleteMany({ where: { question: { testId: id } } });
+      await tx.question.deleteMany({ where: { testId: id } });
+      await tx.submission.deleteMany({ where: { testId: id } });
+      await tx.test.delete({ where: { id } });
     });
 
-    if (!test) throw new NotFoundException('Test not found.');
-    if (role !== UserRole.TEACHER || test.class.teacherId !== userId)
-      throw new ForbiddenException('You are not allowed to delete this test.');
-
-    await this.prisma.test.delete({ where: { id } });
     return { message: 'Test deleted successfully' };
   }
 
   async getQuestionsByTestId(testId: number) {
-    const questions = await this.prisma.question.findMany({
+    return this.prisma.question.findMany({
       where: { testId },
+      select: {
+        id: true,
+        text: true,
+        type: true,
+        options: true,
+        correctAnswer: true,
+        maxMarks: true,
+      },
+      orderBy: { id: 'asc' },
     });
-
-    return questions;
   }
 
-  async addQuestions(
-    testId: number,
-    dto: AddQuestionsDto,
-    userId: number,
-    role: UserRole,
-  ) {
-    const test = await this.prisma.test.findUnique({
-      where: { id: testId },
-      include: { class: true },
+  async addQuestions(testId: number, dto: AddQuestionsDto, userId: number) {
+    await this.ensureTeacherOwnsTest(userId, testId);
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const q of dto.questions) {
+        await tx.question.create({ data: { ...q, testId } });
+      }
     });
 
-    if (!test) throw new NotFoundException('Test not found.');
-    if (role !== UserRole.TEACHER || test.class.teacherId !== userId)
-      throw new ForbiddenException('You cannot modify this test.');
-
-    return this.prisma.$transaction(
-      dto.questions.map((q) =>
-        this.prisma.question.create({
-          data: {
-            ...q,
-            testId,
-          },
-        }),
-      ),
-    );
+    return { message: 'Questions added successfully' };
   }
 
-  async updateQuestion(
-    id: number,
-    dto: UpdateQuestionDto,
-    userId: number,
-    role: UserRole,
-  ) {
-    const question = await this.prisma.question.findUnique({
-      where: { id },
-      include: { test: { include: { class: true } } },
-    });
-
-    if (!question) throw new NotFoundException('Question not found.');
-    if (role !== UserRole.TEACHER || question.test.class.teacherId !== userId)
-      throw new ForbiddenException('You cannot edit this question.');
+  async updateQuestion(id: number, dto: UpdateQuestionDto, userId: number) {
+    await this.ensureTeacherOwnsQuestion(userId, id);
 
     return this.prisma.question.update({
       where: { id },
@@ -154,15 +172,8 @@ export class TestService {
     });
   }
 
-  async removeQuestion(id: number, userId: number, role: UserRole) {
-    const question = await this.prisma.question.findUnique({
-      where: { id },
-      include: { test: { include: { class: true } } },
-    });
-
-    if (!question) throw new NotFoundException('Question not found.');
-    if (role !== UserRole.TEACHER || question.test.class.teacherId !== userId)
-      throw new ForbiddenException('You cannot delete this question.');
+  async removeQuestion(id: number, userId: number) {
+    await this.ensureTeacherOwnsQuestion(userId, id);
 
     await this.prisma.question.delete({ where: { id } });
     return { message: 'Question removed successfully' };

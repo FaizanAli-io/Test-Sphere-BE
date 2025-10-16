@@ -24,7 +24,7 @@ import {
   ForgotPasswordDto,
 } from './auth.dto';
 import { AuthService } from './auth.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { GetUser } from '../common/decorators/get-user.decorator';
 
 @ApiTags('Authentication')

@@ -24,7 +24,7 @@ import {
 } from './class.dto';
 import { UserRole } from '@prisma/client';
 import { ClassService } from './class.service';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { GetUser } from '../common/decorators/get-user.decorator';
 
 @ApiTags('Classes')

@@ -19,7 +19,7 @@ import {
 } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CreateProctoringLogDto } from './procotoring-log.dto';
 import { ProctoringLogService } from './procotoring-log.service';
 import { GetUser } from '../common/decorators/get-user.decorator';

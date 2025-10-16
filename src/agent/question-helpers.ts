@@ -1,18 +1,20 @@
 import OpenAI from 'openai';
 
+import { configService } from '../config';
+
+const client = new OpenAI({
+  apiKey: configService.get('OPENROUTER_API_KEY'),
+  baseURL: 'https://openrouter.ai/api/v1',
+});
+
 export interface GeneratedQuestion {
   text: string;
   type: 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER' | 'LONG_ANSWER';
-  options?: string[]; // Only for MULTIPLE_CHOICE
-  correctAnswer?: number; // Index for MCQs or 0/1 for TRUE_FALSE
+  options?: string[];
+  correctAnswer?: number;
   maxMarks?: number;
   image?: string;
 }
-
-const client = new OpenAI({
-  apiKey: process.env.OPENROUTER_API_KEY!,
-  baseURL: 'https://openrouter.ai/api/v1',
-});
 
 /**
  * Generate structured test questions using ChatGPT (OpenRouter).

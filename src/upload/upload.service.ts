@@ -62,4 +62,35 @@ export class UploadService {
 
     return response.json();
   }
+
+  async deleteImages(fileIds: string[]) {
+    if (!fileIds.length) return [];
+
+    const auth = Buffer.from(`${this.privateKey}:`).toString('base64');
+    const results: { fileId: string; success: boolean; error?: string }[] = [];
+
+    for (const fileId of fileIds) {
+      const response = await fetch(
+        `https://api.imagekit.io/v1/files/${fileId}`,
+        {
+          method: 'DELETE',
+          headers: { Authorization: `Basic ${auth}` },
+        },
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        results.push({
+          fileId,
+          success: false,
+          error: `${response.status} ${errorText}`,
+        });
+        continue;
+      }
+
+      results.push({ fileId, success: true });
+    }
+
+    return results;
+  }
 }

@@ -1,4 +1,5 @@
 import {
+  IsUrl,
   IsInt,
   IsEnum,
   IsArray,
@@ -11,12 +12,19 @@ import { Type } from 'class-transformer';
 import { LogType } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-class ImageLogEntry {
+export class ImageLogEntry {
   @ApiProperty({
-    description: 'URL or base64 string of the captured image',
-    example: 'https://example.com/screenshot-1.png',
+    description: 'ImageKit fileId for this uploaded image',
+    example: '670f8cd9f933d06b9ccf37b1',
   })
   @IsString()
+  fileId: string;
+
+  @ApiProperty({
+    description: 'Public URL of the uploaded image',
+    example: 'https://ik.imagekit.io/abcd/test-monitoring/webcam_123.jpg',
+  })
+  @IsUrl()
   image: string;
 
   @ApiProperty({
@@ -45,18 +53,8 @@ export class CreateProctoringLogDto {
 
   @ApiPropertyOptional({
     description:
-      'Metadata array for screenshot or webcam photo logs. Each entry contains an image and timestamp.',
+      'Metadata array for screenshot or webcam photo logs. Each entry contains fileId, image URL, and timestamp.',
     type: [ImageLogEntry],
-    example: [
-      {
-        image: 'https://example.com/webcam_1.jpg',
-        takenAt: '2025-10-10T12:45:00.000Z',
-      },
-      {
-        image: 'https://example.com/webcam_2.jpg',
-        takenAt: '2025-10-10T12:47:00.000Z',
-      },
-    ],
   })
   @IsOptional()
   @ValidateNested({ each: true })

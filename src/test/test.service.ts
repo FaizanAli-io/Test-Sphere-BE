@@ -96,16 +96,8 @@ export class TestService {
 
   async getTestsByClassId(classId: number) {
     return this.prisma.test.findMany({
-      where: { classId },
-      select: {
-        id: true,
-        title: true,
-        description: true,
-        startAt: true,
-        endAt: true,
-        createdAt: true,
-      },
       orderBy: { createdAt: 'desc' },
+      where: { classId },
     });
   }
 

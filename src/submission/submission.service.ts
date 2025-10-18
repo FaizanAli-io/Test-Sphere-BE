@@ -5,11 +5,6 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import {
-  SubmitTestDto,
-  StartSubmissionDto,
-  GradeSubmissionDto,
-} from './submission.dto';
-import {
   TestStatus,
   QuestionType,
   GradingStatus,
@@ -17,9 +12,19 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
+import {
+  SubmitTestDto,
+  StartSubmissionDto,
+  GradeSubmissionDto,
+} from './submission.dto';
+import { ProctoringLogService } from '../procotoring-log/procotoring-log.service';
+
 @Injectable()
 export class SubmissionService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private proctoringLogService: ProctoringLogService,
+  ) {}
 
   private readonly submissionInclude = {
     answers: { include: { question: true } },
@@ -195,10 +200,16 @@ export class SubmissionService {
 
   async deleteSubmission(teacherId: number, submissionId: number) {
     await this.ensureTeacherOwnsSubmission(teacherId, submissionId);
+    await this.proctoringLogService.clearLogsForSubmission(
+      submissionId,
+      teacherId,
+    );
+
     await this.prisma.$transaction([
       this.prisma.answer.deleteMany({ where: { submissionId } }),
       this.prisma.submission.delete({ where: { id: submissionId } }),
     ]);
+
     return { success: true };
   }
 

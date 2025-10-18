@@ -5,11 +5,15 @@ import {
 } from '@nestjs/common';
 import { LogType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { UploadService } from '../upload/upload.service';
 import { CreateProctoringLogDto } from './procotoring-log.dto';
 
 @Injectable()
 export class ProctoringLogService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private uploadService: UploadService,
+  ) {}
 
   private async verifyTeacherOwnership(
     submissionId: number,
@@ -35,10 +39,29 @@ export class ProctoringLogService {
     return submission;
   }
 
-  async addLog(dto: CreateProctoringLogDto, teacherId: number) {
+  private async verifyStudentOwnership(
+    submissionId: number,
+    studentId: number,
+  ) {
+    const submission = await this.prisma.submission.findUnique({
+      where: { id: submissionId },
+    });
+
+    if (!submission || !submission.userId) {
+      throw new BadRequestException('Valid submission not found');
+    }
+
+    if (submission.userId !== studentId) {
+      throw new ForbiddenException('You do not own this submission');
+    }
+
+    return submission;
+  }
+
+  async addLog(dto: CreateProctoringLogDto, studentId: number) {
     const { submissionId, logType, meta } = dto;
 
-    await this.verifyTeacherOwnership(submissionId, teacherId);
+    await this.verifyStudentOwnership(submissionId, studentId);
 
     const existing = await this.prisma.proctoringLog.findFirst({
       where: { submissionId, logType },
@@ -64,8 +87,8 @@ export class ProctoringLogService {
 
     return this.prisma.proctoringLog.create({
       data: {
-        submissionId,
         logType,
+        submissionId,
         meta: meta ? JSON.parse(JSON.stringify(meta)) : [],
       },
     });
@@ -83,12 +106,34 @@ export class ProctoringLogService {
   async clearLogsForSubmission(submissionId: number, teacherId: number) {
     await this.verifyTeacherOwnership(submissionId, teacherId);
 
-    const result = await this.prisma.proctoringLog.deleteMany({
+    const logs = await this.prisma.proctoringLog.findMany({
+      where: { submissionId },
+      select: { meta: true },
+    });
+
+    const fileIds = logs
+      .flatMap((log) =>
+        Array.isArray(log.meta)
+          ? log.meta
+              .map((m: any) => m.fileId)
+              .filter((id: string | null | undefined) => !!id)
+          : [],
+      )
+      .filter(Boolean);
+
+    const deleteResults = fileIds.length
+      ? await this.uploadService.deleteImages(fileIds)
+      : [];
+
+    const dbResult = await this.prisma.proctoringLog.deleteMany({
       where: { submissionId },
     });
 
     return {
-      message: `Deleted ${result.count} log(s) for submission ${submissionId}`,
+      logsDeleted: dbResult.count,
+      imagesAttempted: fileIds.length,
+      imageDeletionResults: deleteResults,
+      message: `Deleted ${dbResult.count} log(s) and attempted to remove ${fileIds.length} image(s) for submission ${submissionId}.`,
     };
   }
 }

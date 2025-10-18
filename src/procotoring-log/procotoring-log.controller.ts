@@ -1,56 +1,51 @@
 import {
-  Controller,
-  Post,
   Get,
+  Post,
   Delete,
   Body,
   Param,
   UseGuards,
+  Controller,
   ParseIntPipe,
-  ForbiddenException,
 } from '@nestjs/common';
 import {
+  ApiBody,
   ApiTags,
+  ApiParam,
+  ApiResponse,
   ApiOperation,
   ApiBearerAuth,
-  ApiResponse,
-  ApiParam,
-  ApiBody,
 } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 
+import { RolesGuard } from '../common/guards/roles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { GetUser } from '../common/decorators/get-user.decorator';
 import { CreateProctoringLogDto } from './procotoring-log.dto';
 import { ProctoringLogService } from './procotoring-log.service';
-import { GetUser } from '../common/decorators/get-user.decorator';
 
 @ApiTags('Proctoring Logs')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('proctoring-logs')
 export class ProctoringLogController {
   constructor(private readonly logService: ProctoringLogService) {}
 
-  teacherOnlyCheck(role: UserRole) {
-    if (role !== UserRole.TEACHER) {
-      throw new ForbiddenException('Only teachers can perform this action');
-    }
-  }
-
   @Post()
-  @ApiOperation({ summary: 'Add or update a proctoring log (Teacher only)' })
-  @ApiResponse({ status: 201, description: 'Proctoring log added or updated' })
+  @Roles(UserRole.STUDENT)
+  @ApiOperation({ summary: 'Add proctoring log (Student only)' })
+  @ApiResponse({ status: 201, description: 'Proctoring log added' })
   @ApiBody({ type: CreateProctoringLogDto })
   async addLog(
     @Body() dto: CreateProctoringLogDto,
-    @GetUser('id') teacherId: number,
-    @GetUser('role') role: UserRole,
+    @GetUser('id') studentId: number,
   ) {
-    this.teacherOnlyCheck(role);
-    return this.logService.addLog(dto, teacherId);
+    return this.logService.addLog(dto, studentId);
   }
 
   @Get(':submissionId')
+  @Roles(UserRole.TEACHER)
   @ApiOperation({
     summary: 'Retrieve proctoring logs for a submission (Teacher only)',
   })
@@ -59,13 +54,12 @@ export class ProctoringLogController {
   async getLogs(
     @Param('submissionId', ParseIntPipe) submissionId: number,
     @GetUser('id') teacherId: number,
-    @GetUser('role') role: UserRole,
   ) {
-    this.teacherOnlyCheck(role);
     return this.logService.getLogs(submissionId, teacherId);
   }
 
   @Delete(':submissionId')
+  @Roles(UserRole.TEACHER)
   @ApiOperation({
     summary: 'Clear all proctoring logs for a submission (Teacher only)',
   })
@@ -77,9 +71,7 @@ export class ProctoringLogController {
   async clearLogs(
     @Param('submissionId', ParseIntPipe) submissionId: number,
     @GetUser('id') teacherId: number,
-    @GetUser('role') role: UserRole,
   ) {
-    this.teacherOnlyCheck(role);
     return this.logService.clearLogsForSubmission(submissionId, teacherId);
   }
 }

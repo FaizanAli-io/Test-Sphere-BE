@@ -1,17 +1,19 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { TestStatus, QuestionType } from '@prisma/client';
+
 import {
-  IsString,
+  Min,
   IsInt,
-  IsOptional,
-  IsDateString,
   IsEnum,
   IsArray,
+  IsString,
+  IsPositive,
+  IsOptional,
+  IsDateString,
   ValidateNested,
-  Min,
   ValidateIf,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { TestStatus, QuestionType } from '@prisma/client';
 
 export class CreateTestDto {
   @ApiProperty({ example: 12 })
@@ -63,6 +65,12 @@ export class UpdateTestDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @ApiProperty({ required: false, example: 5 })
+  @IsOptional()
+  @IsPositive()
+  @IsInt()
+  numQuestions?: number;
 
   @ApiProperty({ required: false, example: 100 })
   @IsOptional()

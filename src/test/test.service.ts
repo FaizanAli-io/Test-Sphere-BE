@@ -129,7 +129,12 @@ export class TestService {
   }
 
   async getQuestionsByTestId(testId: number) {
-    return this.prisma.question.findMany({
+    const test = await this.prisma.test.findUnique({
+      where: { id: testId },
+      select: { numQuestions: true },
+    });
+
+    const allQuestions = await this.prisma.question.findMany({
       where: { testId },
       select: {
         id: true,
@@ -141,6 +146,15 @@ export class TestService {
       },
       orderBy: { id: 'asc' },
     });
+
+    if (!test?.numQuestions || test.numQuestions >= allQuestions.length) {
+      return allQuestions;
+    }
+
+    const shuffled = allQuestions.sort(() => Math.random() - 0.5);
+    const selected = shuffled.slice(0, test.numQuestions);
+
+    return selected;
   }
 
   async addQuestions(testId: number, dto: AddQuestionsDto, userId: number) {

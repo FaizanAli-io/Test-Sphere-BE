@@ -59,7 +59,7 @@ export class AgentService {
   }
 
   async generateQuestionsFromPrompt(prompt: string) {
-    const questions = await generateStructuredQuestions(prompt);
+    const questions = await generateStructuredQuestions(this.apiKey, prompt);
 
     return {
       message: `Successfully generated ${questions.length} questions.`,

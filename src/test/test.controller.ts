@@ -84,6 +84,17 @@ export class TestController {
     return this.testService.deleteTest(id, userId);
   }
 
+  @Get(':testId/students')
+  @Roles(UserRole.TEACHER)
+  @ApiOperation({ summary: 'Get all students giving the test' })
+  @ApiResponse({ status: 200, description: 'Students giving the test' })
+  async getStudentsByTest(
+    @Param('testId', ParseIntPipe) testId: number,
+    @GetUser('id') userId: number,
+  ) {
+    return this.testService.getStudentsByTestId(testId, userId);
+  }
+
   @Get(':testId/questions')
   @ApiOperation({ summary: 'Get all questions for a test' })
   @ApiResponse({ status: 200, description: 'Returns questions for a test' })

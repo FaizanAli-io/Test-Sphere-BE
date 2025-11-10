@@ -1,5 +1,5 @@
 import { AppModule } from './app.module';
-import { configService } from './config';
+import { ConfigService } from '@nestjs/config';
 
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
@@ -33,6 +33,7 @@ async function bootstrap() {
 
   app.enableCors();
 
+  const configService = app.get<ConfigService>(ConfigService);
   const port = configService.get('PORT') || 3000;
   await app.listen(port, '0.0.0.0');
 }

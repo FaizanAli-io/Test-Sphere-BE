@@ -128,6 +128,19 @@ export class TestService {
     return { message: 'Test deleted successfully' };
   }
 
+  async getStudentsByTestId(testId: number, userId: number) {
+    await this.ensureTeacherOwnsTest(userId, testId);
+
+    const test = await this.prisma.test.findUnique({
+      where: { id: testId },
+      select: { submissions: true },
+    });
+
+    console.log(test);
+
+    return { msg: 69 };
+  }
+
   async getQuestionsByTestId(testId: number) {
     const test = await this.prisma.test.findUnique({
       where: { id: testId },

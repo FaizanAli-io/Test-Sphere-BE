@@ -1,12 +1,5 @@
 import OpenAI from 'openai';
 
-import { configService } from '../config';
-
-const client = new OpenAI({
-  apiKey: configService.get('OPENROUTER_API_KEY'),
-  baseURL: 'https://openrouter.ai/api/v1',
-});
-
 export interface GeneratedQuestion {
   text: string;
   type: 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER' | 'LONG_ANSWER';
@@ -24,8 +17,14 @@ export interface GeneratedQuestion {
  * @returns {Promise<GeneratedQuestion[]>} Structured question list.
  */
 export async function generateStructuredQuestions(
+  apiKey: string,
   prompt: string,
 ): Promise<GeneratedQuestion[]> {
+  const client = new OpenAI({
+    apiKey,
+    baseURL: 'https://openrouter.ai/api/v1',
+  });
+
   const response = await client.chat.completions.create({
     model: 'gpt-4o-mini',
     messages: [

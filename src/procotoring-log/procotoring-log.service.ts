@@ -68,21 +68,13 @@ export class ProctoringLogService {
     });
 
     if (existing) {
-      if (logType === LogType.SCREENSHOT || logType === LogType.WEBCAM_PHOTO) {
-        const existingMeta = (existing.meta as any[]) || [];
-        const updatedMeta = [...existingMeta, ...(meta || [])];
+      const existingMeta = (existing.meta as any[]) || [];
+      const updatedMeta = [...existingMeta, ...(meta || [])];
 
-        return this.prisma.proctoringLog.update({
-          where: { id: existing.id },
-          data: { meta: JSON.parse(JSON.stringify(updatedMeta)) },
-        });
-      }
-
-      if (logType === LogType.SYSTEM_EVENT) {
-        throw new BadRequestException(
-          'System event logging not yet implemented',
-        );
-      }
+      return this.prisma.proctoringLog.update({
+        where: { id: existing.id },
+        data: { meta: JSON.parse(JSON.stringify(updatedMeta)) },
+      });
     }
 
     return this.prisma.proctoringLog.create({

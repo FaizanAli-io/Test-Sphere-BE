@@ -10,6 +10,7 @@ import {
   AddQuestionsDto,
   UpdateQuestionDto,
 } from './test.dto';
+import { SubmissionStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -128,19 +129,6 @@ export class TestService {
     return { message: 'Test deleted successfully' };
   }
 
-  async getStudentsByTestId(testId: number, userId: number) {
-    await this.ensureTeacherOwnsTest(userId, testId);
-
-    const test = await this.prisma.test.findUnique({
-      where: { id: testId },
-      select: { submissions: true },
-    });
-
-    console.log(test);
-
-    return { msg: 69 };
-  }
-
   async getQuestionsByTestId(testId: number) {
     const test = await this.prisma.test.findUnique({
       where: { id: testId },
@@ -196,5 +184,21 @@ export class TestService {
 
     await this.prisma.question.delete({ where: { id } });
     return { message: 'Question removed successfully' };
+  }
+
+  async getStudentsByTestId(testId: number, userId: number) {
+    await this.ensureTeacherOwnsTest(userId, testId);
+
+    const test = await this.prisma.test.findUnique({
+      where: { id: testId },
+      select: {
+        submissions: {
+          include: { user: true },
+          where: { status: SubmissionStatus.IN_PROGRESS },
+        },
+      },
+    });
+
+    return test;
   }
 }

@@ -1,5 +1,5 @@
 import pdfParse from 'pdf-parse';
-import { ConfigService } from '@nestjs/config';
+import { ConfigService } from '@config/config.service';
 import { Injectable, BadRequestException } from '@nestjs/common';
 
 import { generateStructuredQuestions } from './question-helpers';

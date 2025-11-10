@@ -1,28 +1,29 @@
 import * as crypto from 'crypto';
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { ConfigService } from '@config/config.service';
 
 @Injectable()
 export class UploadService {
   constructor(private readonly config: ConfigService) {}
 
   private get publicKey() {
-    return this.config.get<string>('IMAGEKIT_PUBLIC_KEY', '');
+    return this.config.get<string>('IMAGEKIT_PUBLIC_KEY');
   }
 
   private get privateKey() {
-    return this.config.get<string>('IMAGEKIT_PRIVATE_KEY', '');
+    return this.config.get<string>('IMAGEKIT_PRIVATE_KEY');
   }
 
   private get urlEndpoint() {
-    return this.config.get<string>('IMAGEKIT_URL_ENDPOINT', '');
+    return this.config.get<string>('IMAGEKIT_URL_ENDPOINT');
   }
 
   generateSignature() {
     const token = crypto.randomBytes(16).toString('hex');
     const expire = Math.floor(Date.now() / 1000) + 300;
+    const privateKey = this.privateKey ?? '';
     const signature = crypto
-      .createHmac('sha1', this.privateKey)
+      .createHmac('sha1', privateKey)
       .update(token + expire)
       .digest('hex');
 

@@ -1,4 +1,4 @@
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule } from './config/config.module';
 import { Module, MiddlewareConsumer } from '@nestjs/common';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 
@@ -16,7 +16,7 @@ import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule,
     AuthModule,
     TestModule,
     AgentModule,

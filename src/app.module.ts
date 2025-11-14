@@ -9,6 +9,7 @@ import { ClassModule } from './class/class.module';
 import { UploadModule } from './upload/upload.module';
 import { SubmissionModule } from './submission/submission.module';
 import { ProctoringLogModule } from './procotoring-log/procotoring-log.module';
+import { StreamingModule } from './streaming/streaming.module';
 
 import { AppService } from './app.service';
 import { AppController } from './app.controller';
@@ -24,6 +25,7 @@ import { PrismaModule } from './prisma/prisma.module';
     UploadModule,
     SubmissionModule,
     ProctoringLogModule,
+    StreamingModule,
     PrismaModule,
   ],
   providers: [AppService],

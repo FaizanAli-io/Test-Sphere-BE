@@ -1,19 +1,19 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class ConfigService implements OnModuleInit {
+export class ConfigService {
   private readonly envFilePath = path.resolve(process.cwd(), '.env');
   private envVars: Record<string, string> = {};
 
-  onModuleInit() {
+  constructor() {
     this.loadEnvFile();
   }
 
   private loadEnvFile() {
     try {
-      const fileContent = fs.readFileSync(this.envFilePath, 'utf-8');
+      const fileContent = fs.readFileSync(this.envFilePath, 'utf-16le');
 
       const lines = fileContent.split('\n');
       for (const line of lines) {
@@ -30,6 +30,7 @@ export class ConfigService implements OnModuleInit {
     } catch (error) {
       console.error('❌ Failed to read .env file:', error.message);
     }
+    console.log('✅ Environment variables loaded from .env file', this.envVars);
   }
 
   get<T = string>(key: string): T | undefined {

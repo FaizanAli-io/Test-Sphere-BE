@@ -87,8 +87,11 @@ export class TestController {
   @Get(':testId/questions')
   @ApiOperation({ summary: 'Get all questions for a test' })
   @ApiResponse({ status: 200, description: 'Returns questions for a test' })
-  async getQuestionsByTest(@Param('testId', ParseIntPipe) testId: number) {
-    return this.testService.getQuestionsByTestId(testId);
+  async getQuestionsByTest(
+    @Param('testId', ParseIntPipe) testId: number,
+    @GetUser('role') userRole: UserRole,
+  ) {
+    return this.testService.getQuestionsByTestId(testId, userRole);
   }
 
   @Post(':testId/questions')

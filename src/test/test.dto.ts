@@ -32,6 +32,12 @@ export class CreateTestDto {
   @IsString()
   description?: string;
 
+  @ApiProperty({ required: false, example: 5 })
+  @IsOptional()
+  @IsPositive()
+  @IsInt()
+  numQuestions?: number;
+
   @ApiProperty({ example: 90, description: 'Duration in minutes' })
   @IsInt()
   @Min(1)

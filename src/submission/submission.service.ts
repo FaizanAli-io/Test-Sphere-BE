@@ -116,7 +116,11 @@ export class SubmissionService {
     });
 
     await this.prisma.$transaction([
-      this.prisma.answer.createMany({ data: answersData }),
+      this.prisma.answer.createMany({
+        data: answersData,
+        skipDuplicates: true,
+      }),
+
       this.prisma.submission.update({
         where: { id: submission.id },
         data: {

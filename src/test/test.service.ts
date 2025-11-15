@@ -10,8 +10,8 @@ import {
   AddQuestionsDto,
   UpdateQuestionDto,
 } from './test.dto';
-import { SubmissionStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { SubmissionStatus, UserRole } from '@prisma/client';
 
 @Injectable()
 export class TestService {
@@ -129,7 +129,7 @@ export class TestService {
     return { message: 'Test deleted successfully' };
   }
 
-  async getQuestionsByTestId(testId: number) {
+  async getQuestionsByTestId(testId: number, role: string) {
     const test = await this.prisma.test.findUnique({
       where: { id: testId },
       select: { numQuestions: true },
@@ -148,7 +148,11 @@ export class TestService {
       orderBy: { id: 'asc' },
     });
 
-    if (!test?.numQuestions || test.numQuestions >= allQuestions.length) {
+    if (
+      !test?.numQuestions ||
+      role === UserRole.TEACHER ||
+      test.numQuestions >= allQuestions.length
+    ) {
       return allQuestions;
     }
 
@@ -160,13 +164,9 @@ export class TestService {
 
   async addQuestions(testId: number, dto: AddQuestionsDto, userId: number) {
     await this.ensureTeacherOwnsTest(userId, testId);
+    const data = dto.questions.map((q) => ({ ...q, testId }));
 
-    await this.prisma.$transaction(async (tx) => {
-      for (const q of dto.questions) {
-        await tx.question.create({ data: { ...q, testId } });
-      }
-    });
-
+    await this.prisma.question.createMany({ data });
     return { message: 'Questions added successfully' };
   }
 

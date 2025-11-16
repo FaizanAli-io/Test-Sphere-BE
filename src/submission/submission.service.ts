@@ -45,6 +45,21 @@ export class SubmissionService {
     if (!test) throw new NotFoundException("Test not found");
     if (test.status !== TestStatus.ACTIVE) throw new BadRequestException("Test is not active");
 
+    const overWrite = true; // Set to true to allow multiple submissions for testing purposes
+
+    if (overWrite) {
+      return this.prisma.submission.upsert({
+        where: { userId_testId: { userId, testId: dto.testId } },
+        update: { startedAt: new Date() },
+        create: {
+          userId,
+          testId: dto.testId,
+          startedAt: new Date(),
+          status: SubmissionStatus.IN_PROGRESS,
+        },
+      });
+    }
+
     const existing = await this.prisma.submission.findUnique({
       where: { userId_testId: { userId, testId: dto.testId } },
     });

@@ -1,12 +1,8 @@
-import {
-  Injectable,
-  BadRequestException,
-  ForbiddenException,
-} from '@nestjs/common';
-import { LogType } from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
-import { UploadService } from '../upload/upload.service';
-import { CreateProctoringLogDto } from './procotoring-log.dto';
+import { Injectable, BadRequestException, ForbiddenException } from "@nestjs/common";
+import { LogType } from "@prisma/client";
+import { PrismaService } from "../prisma/prisma.service";
+import { UploadService } from "../upload/upload.service";
+import { CreateProctoringLogDto } from "./procotoring-log.dto";
 
 @Injectable()
 export class ProctoringLogService {
@@ -15,44 +11,38 @@ export class ProctoringLogService {
     private uploadService: UploadService,
   ) {}
 
-  private async verifyTeacherOwnership(
-    submissionId: number,
-    teacherId: number,
-  ) {
+  private async verifyTeacherOwnership(submissionId: number, teacherId: number) {
     const submission = await this.prisma.submission.findUnique({
       include: { test: { include: { class: true } } },
       where: { id: submissionId },
     });
 
     if (!submission) {
-      throw new BadRequestException('Submission not found');
+      throw new BadRequestException("Submission not found");
     }
 
     if (!submission.test || !submission.test.class) {
-      throw new BadRequestException('Invalid test or class association');
+      throw new BadRequestException("Invalid test or class association");
     }
 
     if (submission.test.class.teacherId !== teacherId) {
-      throw new ForbiddenException('You do not own this class or test');
+      throw new ForbiddenException("You do not own this class or test");
     }
 
     return submission;
   }
 
-  private async verifyStudentOwnership(
-    submissionId: number,
-    studentId: number,
-  ) {
+  private async verifyStudentOwnership(submissionId: number, studentId: number) {
     const submission = await this.prisma.submission.findUnique({
       where: { id: submissionId },
     });
 
     if (!submission || !submission.userId) {
-      throw new BadRequestException('Valid submission not found');
+      throw new BadRequestException("Valid submission not found");
     }
 
     if (submission.userId !== studentId) {
-      throw new ForbiddenException('You do not own this submission');
+      throw new ForbiddenException("You do not own this submission");
     }
 
     return submission;
@@ -91,7 +81,7 @@ export class ProctoringLogService {
 
     return this.prisma.proctoringLog.findMany({
       where: { submissionId },
-      orderBy: { timestamp: 'asc' },
+      orderBy: { timestamp: "asc" },
     });
   }
 
@@ -106,16 +96,12 @@ export class ProctoringLogService {
     const fileIds = logs
       .flatMap((log) =>
         Array.isArray(log.meta)
-          ? log.meta
-              .map((m: any) => m.fileId)
-              .filter((id: string | null | undefined) => !!id)
+          ? log.meta.map((m: any) => m.fileId).filter((id: string | null | undefined) => !!id)
           : [],
       )
       .filter(Boolean);
 
-    const deleteResults = fileIds.length
-      ? await this.uploadService.deleteImages(fileIds)
-      : [];
+    const deleteResults = fileIds.length ? await this.uploadService.deleteImages(fileIds) : [];
 
     const dbResult = await this.prisma.proctoringLog.deleteMany({
       where: { submissionId },

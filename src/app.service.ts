@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from './prisma/prisma.service';
+import { Injectable } from "@nestjs/common";
+import { PrismaService } from "./prisma/prisma.service";
 
 @Injectable()
 export class AppService {
@@ -148,14 +148,14 @@ export class AppService {
       await this.prisma.$queryRaw`SELECT 1`;
 
       return {
-        status: 'OK',
-        message: 'API is healthy!',
+        status: "OK",
+        message: "API is healthy!",
       };
     } catch (error) {
-      console.error('Health check failed:', error);
+      console.error("Health check failed:", error);
       return {
-        status: 'ERROR',
-        message: 'API is not healthy.',
+        status: "ERROR",
+        message: "API is not healthy.",
       };
     }
   }

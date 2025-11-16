@@ -1,5 +1,5 @@
-import { Injectable, NestMiddleware } from '@nestjs/common';
-import { Request, Response, NextFunction } from 'express';
+import { Injectable, NestMiddleware } from "@nestjs/common";
+import { Request, Response, NextFunction } from "express";
 
 @Injectable()
 export class LoggerMiddleware implements NestMiddleware {
@@ -7,10 +7,10 @@ export class LoggerMiddleware implements NestMiddleware {
     const { method, originalUrl } = req;
     const start = Date.now();
 
-    res.on('finish', () => {
+    res.on("finish", () => {
       const duration = Date.now() - start;
-      const currentTime = new Date().toLocaleTimeString('en-PK', {
-        timeZone: 'Asia/Karachi',
+      const currentTime = new Date().toLocaleTimeString("en-PK", {
+        timeZone: "Asia/Karachi",
         hour12: true,
       });
 

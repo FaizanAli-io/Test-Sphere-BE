@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty } from "@nestjs/swagger";
 import {
   IsInt,
   IsEnum,
@@ -7,25 +7,25 @@ import {
   IsString,
   IsOptional,
   ValidateNested,
-} from 'class-validator';
-import { Type } from 'class-transformer';
-import { SubmissionStatus } from '@prisma/client';
+} from "class-validator";
+import { Type } from "class-transformer";
+import { SubmissionStatus } from "@prisma/client";
 
 export class StartSubmissionDto {
-  @ApiProperty({ example: 1, description: 'ID of the test to start' })
+  @ApiProperty({ example: 1, description: "ID of the test to start" })
   @IsInt()
   testId: number;
 }
 
 export class AnswerDto {
-  @ApiProperty({ example: 12, description: 'Question ID being answered' })
+  @ApiProperty({ example: 12, description: "Question ID being answered" })
   @IsInt()
   questionId: number;
 
   @ApiProperty({
-    example: '2',
+    example: "2",
     nullable: true,
-    description: 'The selected answer or text response',
+    description: "The selected answer or text response",
   })
   @IsString()
   @IsOptional()
@@ -35,7 +35,7 @@ export class AnswerDto {
 export class SubmitTestDto {
   @ApiProperty({
     type: [AnswerDto],
-    description: 'List of answers for the submitted test',
+    description: "List of answers for the submitted test",
   })
   @IsArray()
   @ValidateNested({ each: true })
@@ -44,11 +44,11 @@ export class SubmitTestDto {
 }
 
 export class GradeAnswerDto {
-  @ApiProperty({ example: 10, description: 'ID of the answer to grade' })
+  @ApiProperty({ example: 10, description: "ID of the answer to grade" })
   @IsInt()
   answerId: number;
 
-  @ApiProperty({ example: 4, description: 'Marks obtained by the student' })
+  @ApiProperty({ example: 4, description: "Marks obtained by the student" })
   @IsNumber()
   obtainedMarks: number;
 }
@@ -56,7 +56,7 @@ export class GradeAnswerDto {
 export class GradeSubmissionDto {
   @ApiProperty({
     type: [GradeAnswerDto],
-    description: 'List of graded answers',
+    description: "List of graded answers",
   })
   @IsArray()
   @ValidateNested({ each: true })

@@ -4,10 +4,10 @@ import {
   NotFoundException,
   BadRequestException,
   UnauthorizedException,
-} from '@nestjs/common';
-import * as bcrypt from 'bcryptjs';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@config/config.service';
+} from "@nestjs/common";
+import * as bcrypt from "bcryptjs";
+import { JwtService } from "@nestjs/jwt";
+import { ConfigService } from "@config/config.service";
 
 import {
   LoginDto,
@@ -16,10 +16,10 @@ import {
   UpdateProfileDto,
   ResetPasswordDto,
   ForgotPasswordDto,
-} from './auth.dto';
-import { UserRole } from '@prisma/client';
-import { EmailService } from '../email/email.service';
-import { PrismaService } from '../prisma/prisma.service';
+} from "./auth.dto";
+import { UserRole } from "@prisma/client";
+import { EmailService } from "../email/email.service";
+import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
 export class AuthService {
@@ -36,15 +36,11 @@ export class AuthService {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
-  private async signToken(
-    userId: number,
-    email: string,
-    role: UserRole,
-  ): Promise<string> {
+  private async signToken(userId: number, email: string, role: UserRole): Promise<string> {
     const payload = { sub: userId, email, role };
     return this.jwtService.signAsync(payload, {
-      expiresIn: '7d',
-      secret: this.configService.get('JWT_SECRET'),
+      expiresIn: "7d",
+      secret: this.configService.get("JWT_SECRET"),
     });
   }
 
@@ -62,15 +58,10 @@ export class AuthService {
           where: { email: dto.email },
         });
 
-        const token = await this.signToken(
-          updatedUser.id,
-          updatedUser.email,
-          updatedUser.role,
-        );
+        const token = await this.signToken(updatedUser.id, updatedUser.email, updatedUser.role);
 
         return {
-          message:
-            'Password linked successfully. You can now log in with email or Google.',
+          message: "Password linked successfully. You can now log in with email or Google.",
           accessToken: token,
           user: updatedUser,
         };
@@ -82,36 +73,25 @@ export class AuthService {
           where: { email: dto.email },
         });
 
-        const token = await this.signToken(
-          updatedUser.id,
-          updatedUser.email,
-          updatedUser.role,
-        );
+        const token = await this.signToken(updatedUser.id, updatedUser.email, updatedUser.role);
 
         return {
-          message:
-            'Google account linked successfully. You can now log in with email or Google.',
+          message: "Google account linked successfully. You can now log in with email or Google.",
           accessToken: token,
           user: updatedUser,
         };
       }
 
       if (existingUser.firebaseId && dto.firebaseId)
-        throw new ConflictException(
-          'Account already exists and linked to Google login.',
-        );
+        throw new ConflictException("Account already exists and linked to Google login.");
 
       if (existingUser.password && dto.password)
-        throw new ConflictException(
-          'Account already exists and linked to password login.',
-        );
+        throw new ConflictException("Account already exists and linked to password login.");
 
       if (existingUser.verified)
-        throw new ConflictException('Account already registered and verified.');
+        throw new ConflictException("Account already registered and verified.");
 
-      throw new ConflictException(
-        'Account already registered but not verified.',
-      );
+      throw new ConflictException("Account already registered but not verified.");
     }
 
     if (dto.firebaseId) {
@@ -129,14 +109,13 @@ export class AuthService {
 
       const token = await this.signToken(user.id, user.email, user.role);
       return {
-        message: 'Signup successful via Firebase. Account verified.',
+        message: "Signup successful via Firebase. Account verified.",
         accessToken: token,
         user,
       };
     }
 
-    if (!dto.password)
-      throw new BadRequestException('Password is required for email signup.');
+    if (!dto.password) throw new BadRequestException("Password is required for email signup.");
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const otp = this.generateOtp();
@@ -157,7 +136,7 @@ export class AuthService {
     await this.emailService.sendOtpEmail(user.email, otp);
 
     return {
-      message: 'Signup successful. OTP sent to email for verification.',
+      message: "Signup successful. OTP sent to email for verification.",
     };
   }
 
@@ -166,12 +145,11 @@ export class AuthService {
       where: { email: dto.email },
     });
 
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException("User not found");
 
-    if (!user.otp || !user.otpExpiry)
-      throw new BadRequestException('No OTP generated');
+    if (!user.otp || !user.otpExpiry) throw new BadRequestException("No OTP generated");
 
-    if (user.otp !== dto.otp) throw new BadRequestException('Invalid OTP');
+    if (user.otp !== dto.otp) throw new BadRequestException("Invalid OTP");
 
     if (user.otpExpiry < new Date()) {
       const newOtp = this.generateOtp();
@@ -187,7 +165,7 @@ export class AuthService {
       await this.emailService.sendOtpEmail(user.email, newOtp);
 
       return {
-        message: 'OTP expired. A new OTP has been sent to your email.',
+        message: "OTP expired. A new OTP has been sent to your email.",
         otpResent: true,
       };
     }
@@ -201,7 +179,7 @@ export class AuthService {
       },
     });
 
-    return { message: 'Account verified successfully.', verified: true };
+    return { message: "Account verified successfully.", verified: true };
   }
 
   async login(dto: LoginDto) {
@@ -209,40 +187,32 @@ export class AuthService {
       where: { email: dto.email },
     });
 
-    if (!user) throw new NotFoundException('Invalid credentials');
+    if (!user) throw new NotFoundException("Invalid credentials");
 
     if (dto.firebaseId) {
       if (!user.firebaseId)
-        throw new UnauthorizedException(
-          'No Google Login exists for this account',
-        );
+        throw new UnauthorizedException("No Google Login exists for this account");
 
       if (user.firebaseId !== dto.firebaseId)
-        throw new UnauthorizedException(
-          'Invalid Google Login for this account',
-        );
+        throw new UnauthorizedException("Invalid Google Login for this account");
 
-      if (!user.verified)
-        throw new UnauthorizedException('Account not verified');
+      if (!user.verified) throw new UnauthorizedException("Account not verified");
 
       const token = await this.signToken(user.id, user.email, user.role);
       return { accessToken: token, user };
     }
 
-    if (!dto.password) throw new BadRequestException('Password is required');
+    if (!dto.password) throw new BadRequestException("Password is required");
     if (!user.verified)
-      throw new UnauthorizedException(
-        'Account not verified. Please verify via OTP.',
-      );
+      throw new UnauthorizedException("Account not verified. Please verify via OTP.");
 
     if (!user.password)
       throw new UnauthorizedException(
-        'This account uses Firebase login. Please sign in with Google.',
+        "This account uses Firebase login. Please sign in with Google.",
       );
 
     const isPasswordValid = await bcrypt.compare(dto.password, user.password);
-    if (!isPasswordValid)
-      throw new UnauthorizedException('Invalid credentials');
+    if (!isPasswordValid) throw new UnauthorizedException("Invalid credentials");
 
     const token = await this.signToken(user.id, user.email, user.role);
     return { accessToken: token, user };
@@ -252,7 +222,7 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException("User not found");
 
     const otp = this.generateOtp();
     await this.prisma.user.update({
@@ -264,7 +234,7 @@ export class AuthService {
     });
 
     await this.emailService.sendOtpEmail(user.email, otp);
-    return { message: 'OTP sent to your email for password reset.' };
+    return { message: "OTP sent to your email for password reset." };
   }
 
   async resetPassword(dto: ResetPasswordDto) {
@@ -272,10 +242,10 @@ export class AuthService {
       where: { email: dto.email },
     });
 
-    if (!user) throw new NotFoundException('User not found');
-    if (user.otp !== dto.otp) throw new BadRequestException('Invalid OTP');
+    if (!user) throw new NotFoundException("User not found");
+    if (user.otp !== dto.otp) throw new BadRequestException("Invalid OTP");
     if (user.otpExpiry ? user.otpExpiry < new Date() : false)
-      throw new BadRequestException('OTP expired');
+      throw new BadRequestException("OTP expired");
 
     const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
     await this.prisma.user.update({
@@ -287,7 +257,7 @@ export class AuthService {
       },
     });
 
-    return { message: 'Password reset successful.' };
+    return { message: "Password reset successful." };
   }
 
   async getProfile(userId: number) {
@@ -305,13 +275,13 @@ export class AuthService {
       },
     });
 
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException("User not found");
     return user;
   }
 
   async updateProfile(userId: number, dto: UpdateProfileDto) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException("User not found");
 
     const updatedUser = await this.prisma.user.update({
       where: { id: userId },

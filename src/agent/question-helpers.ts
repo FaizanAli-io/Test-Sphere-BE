@@ -1,8 +1,8 @@
-import OpenAI from 'openai';
+import OpenAI from "openai";
 
 export interface GeneratedQuestion {
   text: string;
-  type: 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER' | 'LONG_ANSWER';
+  type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "SHORT_ANSWER" | "LONG_ANSWER";
   options?: string[];
   correctAnswer?: number;
   maxMarks?: number;
@@ -22,14 +22,14 @@ export async function generateStructuredQuestions(
 ): Promise<GeneratedQuestion[]> {
   const client = new OpenAI({
     apiKey,
-    baseURL: 'https://openrouter.ai/api/v1',
+    baseURL: "https://openrouter.ai/api/v1",
   });
 
   const response = await client.chat.completions.create({
-    model: 'gpt-4o-mini',
+    model: "gpt-4o-mini",
     messages: [
       {
-        role: 'system',
+        role: "system",
         content: `
 You are a professional academic question generator for a school testing system.
 
@@ -73,53 +73,48 @@ Return valid JSON strictly under this structure:
         `,
       },
       {
-        role: 'user',
+        role: "user",
         content: `USER PROMPT: ${prompt}`,
       },
     ],
     response_format: {
-      type: 'json_schema',
+      type: "json_schema",
       json_schema: {
-        name: 'generated_questions',
+        name: "generated_questions",
         schema: {
-          type: 'object',
+          type: "object",
           properties: {
             questions: {
-              type: 'array',
+              type: "array",
               items: {
-                type: 'object',
+                type: "object",
                 properties: {
-                  text: { type: 'string' },
+                  text: { type: "string" },
                   type: {
-                    type: 'string',
-                    enum: [
-                      'MULTIPLE_CHOICE',
-                      'TRUE_FALSE',
-                      'SHORT_ANSWER',
-                      'LONG_ANSWER',
-                    ],
+                    type: "string",
+                    enum: ["MULTIPLE_CHOICE", "TRUE_FALSE", "SHORT_ANSWER", "LONG_ANSWER"],
                   },
                   options: {
-                    type: 'array',
-                    items: { type: 'string' },
+                    type: "array",
+                    items: { type: "string" },
                   },
-                  correctAnswer: { type: 'integer' },
-                  maxMarks: { type: 'integer' },
-                  image: { type: 'string' },
+                  correctAnswer: { type: "integer" },
+                  maxMarks: { type: "integer" },
+                  image: { type: "string" },
                 },
-                required: ['text', 'type'],
+                required: ["text", "type"],
                 additionalProperties: false,
               },
             },
           },
-          required: ['questions'],
+          required: ["questions"],
         },
       },
     },
   });
 
   const content = response.choices[0].message.content;
-  if (!content) throw new Error('No content returned from OpenAI response.');
+  if (!content) throw new Error("No content returned from OpenAI response.");
 
   const structured = JSON.parse(content) as { questions: GeneratedQuestion[] };
   return structured.questions;

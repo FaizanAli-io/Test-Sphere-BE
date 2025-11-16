@@ -6,17 +6,17 @@ import {
   OnGatewayDisconnect,
   MessageBody,
   ConnectedSocket,
-} from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
-import { Logger } from '@nestjs/common';
+} from "@nestjs/websockets";
+import { Server, Socket } from "socket.io";
+import { Logger } from "@nestjs/common";
 
 interface SignalingMessage {
-  type: 'offer' | 'answer' | 'ice-candidate';
+  type: "offer" | "answer" | "ice-candidate";
   data: any;
   from: string;
   to: string;
   testId: number;
-  role: 'student' | 'teacher';
+  role: "student" | "teacher";
 }
 
 interface StreamSession {
@@ -30,14 +30,12 @@ interface StreamSession {
 
 @WebSocketGateway({
   cors: {
-    origin: '*',
+    origin: "*",
     credentials: true,
   },
-  namespace: '/streaming',
+  namespace: "/streaming",
 })
-export class StreamingGateway
-  implements OnGatewayConnection, OnGatewayDisconnect
-{
+export class StreamingGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
@@ -60,28 +58,26 @@ export class StreamingGateway
     }
   }
 
-  @SubscribeMessage('register')
+  @SubscribeMessage("register")
   handleRegister(
     @MessageBody()
-    data: { userId: string; role: 'student' | 'teacher'; testId: number },
+    data: { userId: string; role: "student" | "teacher"; testId: number },
     @ConnectedSocket() client: Socket,
   ) {
-    this.logger.log(
-      `User registered: ${data.userId} as ${data.role} for test ${data.testId}`,
-    );
+    this.logger.log(`User registered: ${data.userId} as ${data.role} for test ${data.testId}`);
 
     this.userSockets.set(data.userId, client.id);
 
     client.join(`test-${data.testId}`);
     client.join(`${data.role}-${data.testId}`);
 
-    client.emit('registered', {
+    client.emit("registered", {
       success: true,
       socketId: client.id,
     });
   }
 
-  @SubscribeMessage('start-stream')
+  @SubscribeMessage("start-stream")
   handleStartStream(
     @MessageBody()
     data: { studentId: string; teacherId: string; testId: number },
@@ -93,8 +89,8 @@ export class StreamingGateway
       studentId: data.studentId,
       teacherId: data.teacherId,
       testId: data.testId,
-      studentSocketId: this.userSockets.get(data.studentId) || '',
-      teacherSocketId: this.userSockets.get(data.teacherId) || '',
+      studentSocketId: this.userSockets.get(data.studentId) || "",
+      teacherSocketId: this.userSockets.get(data.teacherId) || "",
       startedAt: new Date(),
     };
 
@@ -105,42 +101,37 @@ export class StreamingGateway
     // Notify student to start streaming
     const studentSocketId = this.userSockets.get(data.studentId);
     if (studentSocketId) {
-      this.server.to(studentSocketId).emit('stream-request', {
+      this.server.to(studentSocketId).emit("stream-request", {
         teacherId: data.teacherId,
         testId: data.testId,
       });
     }
 
-    client.emit('stream-started', { success: true, sessionKey });
+    client.emit("stream-started", { success: true, sessionKey });
   }
 
-  @SubscribeMessage('signal')
-  handleSignal(
-    @MessageBody() message: SignalingMessage,
-    @ConnectedSocket() client: Socket,
-  ) {
-    this.logger.log(
-      `Signal from ${message.from} to ${message.to}: ${message.type}`,
-    );
+  @SubscribeMessage("signal")
+  handleSignal(@MessageBody() message: SignalingMessage, @ConnectedSocket() client: Socket) {
+    this.logger.log(`Signal from ${message.from} to ${message.to}: ${message.type}`);
 
     const targetSocketId = this.userSockets.get(message.to);
 
     if (targetSocketId) {
-      this.server.to(targetSocketId).emit('signal', {
+      this.server.to(targetSocketId).emit("signal", {
         type: message.type,
         data: message.data,
         from: message.from,
       });
     } else {
       this.logger.warn(`Target user ${message.to} not found`);
-      client.emit('signal-error', {
-        error: 'Target user not connected',
+      client.emit("signal-error", {
+        error: "Target user not connected",
         to: message.to,
       });
     }
   }
 
-  @SubscribeMessage('stop-stream')
+  @SubscribeMessage("stop-stream")
   handleStopStream(
     @MessageBody()
     data: { studentId: string; teacherId: string; testId: number },
@@ -157,21 +148,21 @@ export class StreamingGateway
     const teacherSocketId = this.userSockets.get(data.teacherId);
 
     if (studentSocketId) {
-      this.server.to(studentSocketId).emit('stream-stopped', {
+      this.server.to(studentSocketId).emit("stream-stopped", {
         teacherId: data.teacherId,
       });
     }
 
     if (teacherSocketId) {
-      this.server.to(teacherSocketId).emit('stream-stopped', {
+      this.server.to(teacherSocketId).emit("stream-stopped", {
         studentId: data.studentId,
       });
     }
 
-    client.emit('stream-stopped', { success: true });
+    client.emit("stream-stopped", { success: true });
   }
 
-  @SubscribeMessage('get-active-sessions')
+  @SubscribeMessage("get-active-sessions")
   handleGetActiveSessions(
     @MessageBody() data: { testId: number },
     @ConnectedSocket() client: Socket,
@@ -180,7 +171,7 @@ export class StreamingGateway
       (session) => session.testId === data.testId,
     );
 
-    client.emit('active-sessions', { sessions });
+    client.emit("active-sessions", { sessions });
   }
 
   private getUserIdBySocketId(socketId: string): string | undefined {
@@ -196,21 +187,16 @@ export class StreamingGateway
     const sessionsToDelete: string[] = [];
 
     for (const [key, session] of this.activeSessions.entries()) {
-      if (
-        session.studentSocketId === socketId ||
-        session.teacherSocketId === socketId
-      ) {
+      if (session.studentSocketId === socketId || session.teacherSocketId === socketId) {
         sessionsToDelete.push(key);
 
         // Notify the other party
         const otherSocketId =
-          session.studentSocketId === socketId
-            ? session.teacherSocketId
-            : session.studentSocketId;
+          session.studentSocketId === socketId ? session.teacherSocketId : session.studentSocketId;
 
         if (otherSocketId) {
-          this.server.to(otherSocketId).emit('stream-stopped', {
-            reason: 'peer-disconnected',
+          this.server.to(otherSocketId).emit("stream-stopped", {
+            reason: "peer-disconnected",
           });
         }
       }

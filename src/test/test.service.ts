@@ -3,15 +3,10 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
-} from '@nestjs/common';
-import {
-  CreateTestDto,
-  UpdateTestDto,
-  AddQuestionsDto,
-  UpdateQuestionDto,
-} from './test.dto';
-import { PrismaService } from '../prisma/prisma.service';
-import { SubmissionStatus, UserRole } from '@prisma/client';
+} from "@nestjs/common";
+import { CreateTestDto, UpdateTestDto, AddQuestionsDto, UpdateQuestionDto } from "./test.dto";
+import { PrismaService } from "../prisma/prisma.service";
+import { SubmissionStatus, UserRole } from "@prisma/client";
 
 @Injectable()
 export class TestService {
@@ -23,9 +18,9 @@ export class TestService {
       select: { teacherId: true },
     });
 
-    if (!classEntity) throw new NotFoundException('Class not found.');
+    if (!classEntity) throw new NotFoundException("Class not found.");
     if (classEntity.teacherId !== userId)
-      throw new ForbiddenException('You are not authorized for this class.');
+      throw new ForbiddenException("You are not authorized for this class.");
   }
 
   private async ensureTeacherOwnsTest(userId: number, testId: number) {
@@ -34,9 +29,9 @@ export class TestService {
       include: { class: { select: { teacherId: true } } },
     });
 
-    if (!test) throw new NotFoundException('Test not found.');
+    if (!test) throw new NotFoundException("Test not found.");
     if (test.class.teacherId !== userId)
-      throw new ForbiddenException('You cannot modify this test.');
+      throw new ForbiddenException("You cannot modify this test.");
 
     return test;
   }
@@ -51,16 +46,16 @@ export class TestService {
       },
     });
 
-    if (!question) throw new NotFoundException('Question not found.');
+    if (!question) throw new NotFoundException("Question not found.");
     if (question.test.class.teacherId !== userId)
-      throw new ForbiddenException('You cannot modify this question.');
+      throw new ForbiddenException("You cannot modify this question.");
 
     return question;
   }
 
   private validateDates(startAt?: string, endAt?: string) {
     if (startAt && endAt && new Date(startAt) >= new Date(endAt)) {
-      throw new BadRequestException('End date must be after start date.');
+      throw new BadRequestException("End date must be after start date.");
     }
   }
 
@@ -91,13 +86,13 @@ export class TestService {
       },
     });
 
-    if (!test) throw new NotFoundException('Test not found.');
+    if (!test) throw new NotFoundException("Test not found.");
     return test;
   }
 
   async getTestsByClassId(classId: number) {
     return this.prisma.test.findMany({
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       where: { classId },
     });
   }
@@ -126,7 +121,7 @@ export class TestService {
       await tx.test.delete({ where: { id } });
     });
 
-    return { message: 'Test deleted successfully' };
+    return { message: "Test deleted successfully" };
   }
 
   async getQuestionsByTestId(testId: number, role: string) {
@@ -145,7 +140,7 @@ export class TestService {
         correctAnswer: true,
         maxMarks: true,
       },
-      orderBy: { id: 'asc' },
+      orderBy: { id: "asc" },
     });
 
     if (
@@ -167,7 +162,7 @@ export class TestService {
     const data = dto.questions.map((q) => ({ ...q, testId }));
 
     await this.prisma.question.createMany({ data });
-    return { message: 'Questions added successfully' };
+    return { message: "Questions added successfully" };
   }
 
   async updateQuestion(id: number, dto: UpdateQuestionDto, userId: number) {
@@ -183,7 +178,7 @@ export class TestService {
     await this.ensureTeacherOwnsQuestion(userId, id);
 
     await this.prisma.question.delete({ where: { id } });
-    return { message: 'Question removed successfully' };
+    return { message: "Question removed successfully" };
   }
 
   async getStudentsByTestId(testId: number, userId: number) {

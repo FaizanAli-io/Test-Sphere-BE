@@ -3,21 +3,12 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
-} from '@nestjs/common';
-import {
-  TestStatus,
-  QuestionType,
-  GradingStatus,
-  SubmissionStatus,
-} from '@prisma/client';
-import { PrismaService } from '../prisma/prisma.service';
+} from "@nestjs/common";
+import { TestStatus, QuestionType, GradingStatus, SubmissionStatus } from "@prisma/client";
+import { PrismaService } from "../prisma/prisma.service";
 
-import {
-  SubmitTestDto,
-  StartSubmissionDto,
-  GradeSubmissionDto,
-} from './submission.dto';
-import { ProctoringLogService } from '../procotoring-log/procotoring-log.service';
+import { SubmitTestDto, StartSubmissionDto, GradeSubmissionDto } from "./submission.dto";
+import { ProctoringLogService } from "../procotoring-log/procotoring-log.service";
 
 @Injectable()
 export class SubmissionService {
@@ -32,18 +23,15 @@ export class SubmissionService {
     test: { include: { class: { select: { id: true, name: true } } } },
   } as const;
 
-  private async ensureTeacherOwnsSubmission(
-    teacherId: number,
-    submissionId: number,
-  ) {
+  private async ensureTeacherOwnsSubmission(teacherId: number, submissionId: number) {
     const submission = await this.prisma.submission.findUnique({
       where: { id: submissionId },
       include: { test: { include: { class: true } } },
     });
 
-    if (!submission) throw new NotFoundException('Submission not found');
+    if (!submission) throw new NotFoundException("Submission not found");
     if (submission.test.class.teacherId !== teacherId)
-      throw new ForbiddenException('Not authorized');
+      throw new ForbiddenException("Not authorized");
 
     return submission;
   }
@@ -54,15 +42,13 @@ export class SubmissionService {
       select: { id: true, status: true },
     });
 
-    if (!test) throw new NotFoundException('Test not found');
-    if (test.status !== TestStatus.ACTIVE)
-      throw new BadRequestException('Test is not active');
+    if (!test) throw new NotFoundException("Test not found");
+    if (test.status !== TestStatus.ACTIVE) throw new BadRequestException("Test is not active");
 
     const existing = await this.prisma.submission.findUnique({
       where: { userId_testId: { userId, testId: dto.testId } },
     });
-    if (existing)
-      throw new BadRequestException('Submission already exists for this test');
+    if (existing) throw new BadRequestException("Submission already exists for this test");
 
     return this.prisma.submission.create({
       data: {
@@ -79,7 +65,7 @@ export class SubmissionService {
       where: { userId, status: SubmissionStatus.IN_PROGRESS },
       include: { test: { select: { id: true } } },
     });
-    if (!submission) throw new NotFoundException('Active submission not found');
+    if (!submission) throw new NotFoundException("Active submission not found");
 
     const questions = await this.prisma.question.findMany({
       where: { testId: submission.test.id },
@@ -88,8 +74,7 @@ export class SubmissionService {
 
     const answersData = dto.answers.map((ans) => {
       const question = questions.find((q) => q.id === ans.questionId);
-      if (!question)
-        throw new BadRequestException(`Question ${ans.questionId} not found`);
+      if (!question) throw new BadRequestException(`Question ${ans.questionId} not found`);
 
       let obtainedMarks: number | null = null;
       let gradingStatus: GradingStatus = GradingStatus.PENDING;
@@ -98,10 +83,7 @@ export class SubmissionService {
         question.type === QuestionType.TRUE_FALSE ||
         question.type === QuestionType.MULTIPLE_CHOICE
       ) {
-        obtainedMarks =
-          question.correctAnswer?.toString() === ans.answer
-            ? question.maxMarks
-            : 0;
+        obtainedMarks = question.correctAnswer?.toString() === ans.answer ? question.maxMarks : 0;
         gradingStatus = GradingStatus.AUTOMATIC;
       }
 
@@ -133,11 +115,7 @@ export class SubmissionService {
     return this.getSubmissionWithDetails(submission.id);
   }
 
-  async gradeSubmission(
-    teacherId: number,
-    submissionId: number,
-    dto: GradeSubmissionDto,
-  ) {
+  async gradeSubmission(teacherId: number, submissionId: number, dto: GradeSubmissionDto) {
     await this.ensureTeacherOwnsSubmission(teacherId, submissionId);
 
     await this.prisma.$transaction(
@@ -152,11 +130,7 @@ export class SubmissionService {
     return this.getSubmissionWithDetails(submissionId);
   }
 
-  async updateSubmissionStatus(
-    teacherId: number,
-    submissionId: number,
-    status: SubmissionStatus,
-  ) {
+  async updateSubmissionStatus(teacherId: number, submissionId: number, status: SubmissionStatus) {
     await this.ensureTeacherOwnsSubmission(teacherId, submissionId);
 
     const data: any = { status };
@@ -173,14 +147,13 @@ export class SubmissionService {
       select: { class: { select: { teacherId: true } } },
     });
 
-    if (!test) throw new NotFoundException('Test not found');
-    if (test.class.teacherId !== teacherId)
-      throw new ForbiddenException('Not authorized');
+    if (!test) throw new NotFoundException("Test not found");
+    if (test.class.teacherId !== teacherId) throw new ForbiddenException("Not authorized");
 
     return this.prisma.submission.findMany({
       where: { testId },
       include: this.submissionInclude,
-      orderBy: { submittedAt: 'asc' },
+      orderBy: { submittedAt: "asc" },
     });
   }
 
@@ -188,12 +161,12 @@ export class SubmissionService {
     const exists = await this.prisma.user.findUnique({
       where: { id: studentId },
     });
-    if (!exists) throw new NotFoundException('Student not found');
+    if (!exists) throw new NotFoundException("Student not found");
 
     return this.prisma.submission.findMany({
       where: { userId: studentId },
       include: this.submissionInclude,
-      orderBy: { submittedAt: 'desc' },
+      orderBy: { submittedAt: "desc" },
     });
   }
 
@@ -204,10 +177,7 @@ export class SubmissionService {
 
   async deleteSubmission(teacherId: number, submissionId: number) {
     await this.ensureTeacherOwnsSubmission(teacherId, submissionId);
-    await this.proctoringLogService.clearLogsForSubmission(
-      submissionId,
-      teacherId,
-    );
+    await this.proctoringLogService.clearLogsForSubmission(submissionId, teacherId);
 
     await this.prisma.$transaction([
       this.prisma.answer.deleteMany({ where: { submissionId } }),
@@ -222,7 +192,7 @@ export class SubmissionService {
       where: { id: submissionId },
       include: this.submissionInclude,
     });
-    if (!submission) throw new NotFoundException('Submission not found');
+    if (!submission) throw new NotFoundException("Submission not found");
     return submission;
   }
 }

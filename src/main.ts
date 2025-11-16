@@ -1,9 +1,9 @@
-import { AppModule } from './app.module';
-import { ConfigService } from '@config/config.service';
+import { AppModule } from "./app.module";
+import { ConfigService } from "@config/config.service";
 
-import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { NestFactory } from "@nestjs/core";
+import { ValidationPipe } from "@nestjs/common";
+import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -18,23 +18,21 @@ async function bootstrap() {
   );
 
   const config = new DocumentBuilder()
-    .setTitle('Test Sphere API')
-    .setDescription(
-      'API Documentation for Test Sphere - An AI-Powered Test Management System',
-    )
-    .setVersion('1.0')
+    .setTitle("Test Sphere API")
+    .setDescription("API Documentation for Test Sphere - An AI-Powered Test Management System")
+    .setVersion("1.0")
     .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document, {
-    customfavIcon: '../favicon.ico',
+  SwaggerModule.setup("api", app, document, {
+    customfavIcon: "../favicon.ico",
   });
 
   app.enableCors();
 
   const configService = app.get<ConfigService>(ConfigService);
-  const port = configService.get('PORT') || 3000;
-  await app.listen(port, '0.0.0.0');
+  const port = configService.get("PORT") || 3000;
+  await app.listen(port, "0.0.0.0");
 }
 bootstrap();

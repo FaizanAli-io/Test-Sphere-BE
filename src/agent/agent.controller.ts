@@ -1,5 +1,5 @@
-import type { Response } from 'express';
-import { AgentService } from './agent.service';
+import type { Response } from "express";
+import { AgentService } from "./agent.service";
 import {
   Res,
   Post,
@@ -9,7 +9,7 @@ import {
   UploadedFile,
   UseInterceptors,
   BadRequestException,
-} from '@nestjs/common';
+} from "@nestjs/common";
 import {
   ApiBody,
   ApiTags,
@@ -17,64 +17,64 @@ import {
   ApiResponse,
   ApiOperation,
   ApiBearerAuth,
-} from '@nestjs/swagger';
-import { AgentDto } from './agent.dto';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
-import { FileInterceptor } from '@nestjs/platform-express';
+} from "@nestjs/swagger";
+import { AgentDto } from "./agent.dto";
+import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { FileInterceptor } from "@nestjs/platform-express";
 
-@ApiTags('Agent')
+@ApiTags("Agent")
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
-@Controller('agent')
+@Controller("agent")
 export class AgentController {
   constructor(private readonly agentService: AgentService) {}
 
-  @Post('stream')
-  @ApiOperation({ summary: 'Stream agent completion (authenticated)' })
-  @ApiResponse({ status: 200, description: 'Stream started' })
+  @Post("stream")
+  @ApiOperation({ summary: "Stream agent completion (authenticated)" })
+  @ApiResponse({ status: 200, description: "Stream started" })
   @ApiBody({ type: AgentDto })
   async streamResponse(@Body() body: AgentDto, @Res() res: Response) {
     await this.agentService.streamCompletion(body.prompt, res);
   }
 
-  @Post('generate-questions/ask')
+  @Post("generate-questions/ask")
   @ApiOperation({
-    summary: 'Generate structured questions from a prompt',
+    summary: "Generate structured questions from a prompt",
   })
   @ApiBody({
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
         prompt: {
-          type: 'string',
+          type: "string",
           example:
-            'Generate 10 mixed algebra questions for grade 9, including multiple choice, true/false, short and long answer types.',
+            "Generate 10 mixed algebra questions for grade 9, including multiple choice, true/false, short and long answer types.",
         },
       },
-      required: ['prompt'],
+      required: ["prompt"],
     },
   })
-  async generateQuestions(@Body('prompt') prompt: string) {
+  async generateQuestions(@Body("prompt") prompt: string) {
     return this.agentService.generateQuestionsFromPrompt(prompt);
   }
 
-  @Post('generate-questions/pdf')
-  @UseInterceptors(FileInterceptor('file'))
-  @ApiConsumes('multipart/form-data')
+  @Post("generate-questions/pdf")
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiConsumes("multipart/form-data")
   @ApiOperation({
-    summary: 'Generate structured questions from a PDF upload',
+    summary: "Generate structured questions from a PDF upload",
   })
   @ApiBody({
     schema: {
-      type: 'object',
+      type: "object",
       properties: {
-        file: { type: 'string', format: 'binary' },
+        file: { type: "string", format: "binary" },
       },
     },
   })
-  @ApiResponse({ status: 200, description: 'Questions generated from PDF' })
+  @ApiResponse({ status: 200, description: "Questions generated from PDF" })
   async generateQuestionsFromPdf(@UploadedFile() file: Express.Multer.File) {
-    if (!file) throw new BadRequestException('No file uploaded.');
+    if (!file) throw new BadRequestException("No file uploaded.");
 
     return this.agentService.generateQuestionsFromPdf(file.buffer);
   }

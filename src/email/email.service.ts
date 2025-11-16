@@ -1,6 +1,6 @@
-import * as nodemailer from 'nodemailer';
-import { Injectable } from '@nestjs/common';
-import { ConfigService } from '@config/config.service';
+import * as nodemailer from "nodemailer";
+import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@config/config.service";
 
 @Injectable()
 export class EmailService {
@@ -8,19 +8,19 @@ export class EmailService {
 
   constructor(private configService: ConfigService) {
     this.transporter = nodemailer.createTransport({
-      service: 'gmail',
+      service: "gmail",
       auth: {
-        user: this.configService.get('SMTP_USER'),
-        pass: this.configService.get('SMTP_PASS'),
+        user: this.configService.get("SMTP_USER"),
+        pass: this.configService.get("SMTP_PASS"),
       },
     });
   }
 
   async sendOtpEmail(email: string, otp: string): Promise<void> {
     await this.transporter.sendMail({
-      from: this.configService.get('SMTP_USER'),
+      from: this.configService.get("SMTP_USER"),
       to: email,
-      subject: 'Account Verification OTP',
+      subject: "Account Verification OTP",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #333;">Account Verification</h2>
@@ -38,9 +38,9 @@ export class EmailService {
 
   async sendWelcomeEmail(email: string, name: string): Promise<void> {
     await this.transporter.sendMail({
-      from: this.configService.get('SMTP_USER'),
+      from: this.configService.get("SMTP_USER"),
       to: email,
-      subject: 'Welcome to Test Sphere',
+      subject: "Welcome to Test Sphere",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #333;">Welcome to Test Sphere!</h2>
@@ -56,16 +56,13 @@ export class EmailService {
     });
   }
 
-  async sendPasswordResetEmail(
-    email: string,
-    resetToken: string,
-  ): Promise<void> {
-    const resetUrl = `${this.configService.get('FRONTEND_URL')}/reset-password?token=${resetToken}`;
+  async sendPasswordResetEmail(email: string, resetToken: string): Promise<void> {
+    const resetUrl = `${this.configService.get("FRONTEND_URL")}/reset-password?token=${resetToken}`;
 
     await this.transporter.sendMail({
-      from: this.configService.get('SMTP_USER'),
+      from: this.configService.get("SMTP_USER"),
       to: email,
-      subject: 'Password Reset Request',
+      subject: "Password Reset Request",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #333;">Password Reset Request</h2>

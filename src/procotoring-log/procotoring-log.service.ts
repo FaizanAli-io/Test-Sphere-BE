@@ -64,6 +64,7 @@ export class ProctoringLogService {
       return this.prisma.proctoringLog.update({
         where: { id: existing.id },
         data: { meta: JSON.parse(JSON.stringify(updatedMeta)) },
+        select: { id: true, logType: true, submissionId: true },
       });
     }
 
@@ -73,16 +74,19 @@ export class ProctoringLogService {
         submissionId,
         meta: meta ? JSON.parse(JSON.stringify(meta)) : [],
       },
+      select: { id: true, logType: true, submissionId: true },
     });
   }
 
   async getLogs(submissionId: number, teacherId: number) {
     await this.verifyTeacherOwnership(submissionId, teacherId);
 
-    return this.prisma.proctoringLog.findMany({
-      where: { submissionId },
-      orderBy: { timestamp: "asc" },
-    });
+    const logs = await this.prisma.proctoringLog.findMany({ where: { submissionId } });
+
+    return logs.map((log) => ({
+      ...log,
+      metaLength: Array.isArray(log.meta) ? log.meta.length : 0,
+    }));
   }
 
   async clearLogsForSubmission(submissionId: number, teacherId: number) {

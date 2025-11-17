@@ -30,7 +30,6 @@ export class ConfigService {
     } catch (error) {
       console.error("❌ Failed to read .env file:", error.message);
     }
-    console.log("✅ Environment variables loaded from .env file", this.envVars);
   }
 
   get<T = string>(key: string): T | undefined {

@@ -41,7 +41,9 @@ enum GradingStatus {
 enum LogType {
   SCREENSHOT
   WEBCAM_PHOTO
-  SYSTEM_EVENT
+  FOCUS_CHANGE
+  MOUSECLICK
+  KEYSTROKE
 }
 
 // Models
@@ -175,11 +177,10 @@ model Answer {
 }
 
 model ProctoringLog {
-  id           Int      @id @default(autoincrement())
+  id           Int     @id @default(autoincrement())
   submissionId Int
   meta         Json?
   logType      LogType
-  timestamp    DateTime @default(now())
 
   submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
 

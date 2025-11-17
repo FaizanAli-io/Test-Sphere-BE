@@ -14,17 +14,19 @@ async function bootstrap() {
       whitelist: true,
       transform: true,
       forbidNonWhitelisted: true,
+      disableErrorMessages: false,
+      validationError: { target: false, value: false },
     }),
   );
 
-  const config = new DocumentBuilder()
+  const swaggerConfig = new DocumentBuilder()
     .setTitle("Test Sphere API")
     .setDescription("API Documentation for Test Sphere - An AI-Powered Test Management System")
     .setVersion("1.0")
     .addBearerAuth()
     .build();
 
-  const document = SwaggerModule.createDocument(app, config);
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup("api", app, document, {
     customfavIcon: "../favicon.ico",
   });

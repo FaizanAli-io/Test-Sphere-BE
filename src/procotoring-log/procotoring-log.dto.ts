@@ -181,3 +181,13 @@ export class CreateProctoringLogDto {
   @ValidateMetaByLogType()
   meta?: ImageLogEntry[] | FocusChangeLogEntry[] | MouseClickLogEntry[] | KeystrokeLogEntry[];
 }
+
+export class CreateProctoringLogBatchDto {
+  @ApiProperty({
+    description: "Array of proctoring logs to add",
+    type: [CreateProctoringLogDto],
+  })
+  @IsArray()
+  @Type(() => CreateProctoringLogDto)
+  logs: CreateProctoringLogDto[];
+}

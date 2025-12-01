@@ -20,7 +20,7 @@ export class UploadService {
 
   generateSignature() {
     const token = crypto.randomBytes(16).toString("hex");
-    const expire = Math.floor(Date.now() / 1000) + 300;
+    const expire = Math.floor(Date.now() / 1000) + 600;
     const privateKey = this.privateKey ?? "";
     const signature = crypto
       .createHmac("sha1", privateKey)

@@ -22,7 +22,7 @@ import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { GetUser } from "../common/decorators/get-user.decorator";
-import { CreateProctoringLogDto } from "./procotoring-log.dto";
+import { CreateProctoringLogDto, CreateProctoringLogBatchDto } from "./procotoring-log.dto";
 import { ProctoringLogService } from "./procotoring-log.service";
 
 @ApiTags("Proctoring Logs")
@@ -39,6 +39,15 @@ export class ProctoringLogController {
   @ApiBody({ type: CreateProctoringLogDto })
   async addLog(@Body() dto: CreateProctoringLogDto, @GetUser("id") studentId: number) {
     return this.logService.addLog(dto, studentId);
+  }
+
+  @Post("batch")
+  @Roles(UserRole.STUDENT)
+  @ApiOperation({ summary: "Add multiple proctoring logs (Student only)" })
+  @ApiResponse({ status: 201, description: "Proctoring logs added" })
+  @ApiBody({ type: CreateProctoringLogBatchDto })
+  async addLogs(@Body() dto: CreateProctoringLogBatchDto, @GetUser("id") studentId: number) {
+    return this.logService.addLogs(dto.logs, studentId);
   }
 
   @Get(":submissionId")

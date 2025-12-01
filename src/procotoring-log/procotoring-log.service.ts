@@ -78,6 +78,64 @@ export class ProctoringLogService {
     });
   }
 
+  async addLogs(logs: CreateProctoringLogDto[], studentId: number) {
+    if (!logs || logs.length === 0) {
+      return [];
+    }
+
+    // Verify ownership for all unique submissions
+    const uniqueSubmissionIds = [...new Set(logs.map((log) => log.submissionId))];
+    await Promise.all(
+      uniqueSubmissionIds.map((submissionId) =>
+        this.verifyStudentOwnership(submissionId, studentId),
+      ),
+    );
+
+    // Group logs by submissionId and logType
+    const logGroups = new Map<string, CreateProctoringLogDto[]>();
+    for (const log of logs) {
+      const key = `${log.submissionId}-${log.logType}`;
+      if (!logGroups.has(key)) {
+        logGroups.set(key, []);
+      }
+      logGroups.get(key)!.push(log);
+    }
+
+    // Process each group
+    const results = await Promise.all(
+      Array.from(logGroups.entries()).map(async ([key, groupLogs]) => {
+        const [submissionId, logType] = key.split("-");
+        const allMeta = groupLogs.flatMap((log) => (log.meta || []) as any[]);
+
+        const existing = await this.prisma.proctoringLog.findFirst({
+          where: { submissionId: parseInt(submissionId), logType: logType as LogType },
+        });
+
+        if (existing) {
+          const existingMeta = (existing.meta as any[]) || [];
+          const updatedMeta = [...existingMeta, ...allMeta];
+
+          return this.prisma.proctoringLog.update({
+            where: { id: existing.id },
+            data: { meta: JSON.parse(JSON.stringify(updatedMeta)) },
+            select: { id: true, logType: true, submissionId: true },
+          });
+        }
+
+        return this.prisma.proctoringLog.create({
+          data: {
+            logType: logType as LogType,
+            submissionId: parseInt(submissionId),
+            meta: JSON.parse(JSON.stringify(allMeta)),
+          },
+          select: { id: true, logType: true, submissionId: true },
+        });
+      }),
+    );
+
+    return results;
+  }
+
   async getLogs(submissionId: number, teacherId: number) {
     await this.verifyTeacherOwnership(submissionId, teacherId);
 

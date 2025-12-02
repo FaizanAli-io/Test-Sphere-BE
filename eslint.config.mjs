@@ -13,9 +13,9 @@ export default tseslint.config(
   eslintPluginPrettierRecommended,
   {
     languageOptions: {
+      // Optimization: Removed Jest globals after test tooling removal (Rule: Remove Redundant Code). Safe; no tests rely on Jest globals now.
       globals: {
         ...globals.node,
-        ...globals.jest,
       },
       sourceType: "commonjs",
       parserOptions: {

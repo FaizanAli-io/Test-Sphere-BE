@@ -1,8 +1,9 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { PrismaService } from "./prisma/prisma.service";
 
 @Injectable()
 export class AppService {
+  private readonly logger = new Logger(AppService.name);
   constructor(private prisma: PrismaService) {}
   getHello(): string {
     return `
@@ -152,7 +153,7 @@ export class AppService {
         message: "API is healthy!",
       };
     } catch (error) {
-      console.error("Health check failed:", error);
+      this.logger.error("Health check failed:", (error as Error)?.message);
       return {
         status: "ERROR",
         message: "API is not healthy.",

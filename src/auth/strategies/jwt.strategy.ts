@@ -9,7 +9,7 @@ import { PrismaService } from "../../prisma/prisma.service";
 export class JwtStrategy extends PassportStrategy(Strategy, "jwt") {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly configService: ConfigService,
+    configService: ConfigService,
   ) {
     const jwtSecret = configService.get<string>("JWT_SECRET");
     if (!jwtSecret) {
@@ -31,7 +31,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, "jwt") {
       throw new UnauthorizedException("User not found");
     }
 
-    const { password, ...result } = user;
+    const { password: _password, ...result } = user;
     return result;
   }
 }

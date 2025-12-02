@@ -1,6 +1,6 @@
 import pdfParse from "pdf-parse";
 import { ConfigService } from "@config/config.service";
-import { Injectable, BadRequestException } from "@nestjs/common";
+import { Injectable, BadRequestException, Logger } from "@nestjs/common";
 
 import { generateStructuredQuestions } from "./question-helpers";
 
@@ -8,6 +8,7 @@ import { generateStructuredQuestions } from "./question-helpers";
 export class AgentService {
   private readonly apiKey: string;
   private readonly systemPrompt: string;
+  private readonly logger = new Logger(AgentService.name);
 
   constructor(private config: ConfigService) {
     this.apiKey = this.config.get<string>("OPENROUTER_API_KEY") ?? "";
@@ -81,7 +82,7 @@ export class AgentService {
         questions: questions.questions,
       };
     } catch (error) {
-      console.error("PDF parsing error:", error);
+      this.logger.error("PDF parsing error:", (error as Error)?.message);
       throw new BadRequestException("Failed to read or process the uploaded PDF.");
     }
   }

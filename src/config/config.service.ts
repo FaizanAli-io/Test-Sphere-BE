@@ -1,11 +1,12 @@
 import * as fs from "fs";
 import * as path from "path";
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 
 @Injectable()
 export class ConfigService {
   private readonly envFilePath = path.resolve(process.cwd(), ".env");
   private envVars: Record<string, string> = {};
+  private readonly logger = new Logger(ConfigService.name);
 
   constructor() {
     this.loadEnvFile();
@@ -28,7 +29,7 @@ export class ConfigService {
         }
       }
     } catch (error) {
-      console.error("❌ Failed to read .env file:", error.message);
+      this.logger.error("❌ Failed to read .env file:", (error as Error)?.message);
     }
   }
 

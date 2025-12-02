@@ -36,51 +36,65 @@ export class AuthService {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
-  private async signToken(userId: number, email: string, role: UserRole): Promise<string> {
-    const payload = { sub: userId, email, role };
-    return this.jwtService.signAsync(payload, {
-      expiresIn: "7d",
-      secret: this.configService.get("JWT_SECRET"),
-    });
+  private async buildAuthResponse(user: any) {
+    const token = await this.jwtService.signAsync(
+      { sub: user.id, email: user.email, role: user.role },
+      {
+        expiresIn: "7d",
+        secret: this.configService.get("JWT_SECRET"),
+      },
+    );
+
+    return {
+      accessToken: token,
+      user,
+    };
   }
 
   async signup(dto: SignupDto) {
+    // --- Find existing user by email ---
     const existingUser = await this.prisma.user.findUnique({
       where: { email: dto.email },
+      select: {
+        id: true,
+        email: true,
+        firebaseId: true,
+        password: true,
+        verified: true,
+        role: true,
+      },
     });
 
     if (existingUser) {
+      // --- Case 1: Existing Google → adding password ---
       if (existingUser.firebaseId && dto.password && !existingUser.password) {
-        const hashedPassword = await bcrypt.hash(dto.password, 10);
-
         const updatedUser = await this.prisma.user.update({
-          data: { password: hashedPassword },
           where: { email: dto.email },
+          data: { password: await bcrypt.hash(dto.password, 10) },
         });
-
-        const token = await this.signToken(updatedUser.id, updatedUser.email, updatedUser.role);
 
         return {
           message: "Password linked successfully. You can now log in with email or Google.",
-          accessToken: token,
-          user: updatedUser,
+          ...(await this.buildAuthResponse(updatedUser)),
         };
       }
 
+      // --- Case 2: Existing Password → adding Google ---
       if (existingUser.password && dto.firebaseId && !existingUser.firebaseId) {
         const updatedUser = await this.prisma.user.update({
-          data: { firebaseId: dto.firebaseId, verified: true },
           where: { email: dto.email },
+          data: { firebaseId: dto.firebaseId, verified: true },
         });
-
-        const token = await this.signToken(updatedUser.id, updatedUser.email, updatedUser.role);
 
         return {
           message: "Google account linked successfully. You can now log in with email or Google.",
-          accessToken: token,
-          user: updatedUser,
+          ...(await this.buildAuthResponse(updatedUser)),
         };
       }
+
+      // --- Conflicts ---
+      if (existingUser.verified)
+        throw new ConflictException("Account already registered and verified.");
 
       if (existingUser.firebaseId && dto.firebaseId)
         throw new ConflictException("Account already exists and linked to Google login.");
@@ -88,12 +102,19 @@ export class AuthService {
       if (existingUser.password && dto.password)
         throw new ConflictException("Account already exists and linked to password login.");
 
-      if (existingUser.verified)
-        throw new ConflictException("Account already registered and verified.");
-
       throw new ConflictException("Account already registered but not verified.");
     }
 
+    // --- Ensure CNIC is unique ---
+    if (dto.cnic) {
+      const cnicUser = await this.prisma.user.findUnique({
+        where: { cnic: dto.cnic },
+        select: { id: true },
+      });
+      if (cnicUser) throw new ConflictException("CNIC is already registered.");
+    }
+
+    // --- Google signup ---
     if (dto.firebaseId) {
       const user = await this.prisma.user.create({
         data: {
@@ -107,36 +128,67 @@ export class AuthService {
         },
       });
 
-      const token = await this.signToken(user.id, user.email, user.role);
       return {
-        message: "Signup successful via Firebase. Account verified.",
-        accessToken: token,
-        user,
+        message: "Signup successful via Google. Account verified.",
+        ...(await this.buildAuthResponse(user)),
       };
     }
 
+    // --- Email signup ---
     if (!dto.password) throw new BadRequestException("Password is required for email signup.");
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const otp = this.generateOtp();
 
-    const user = await this.prisma.user.create({
+    const user = await this.prisma.$transaction(async (tx) => {
+      const createdUser = await tx.user.create({
+        data: {
+          name: dto.name,
+          role: dto.role,
+          email: dto.email,
+          password: hashedPassword,
+          profileImage: dto.profileImage,
+          cnic: dto.cnic,
+          verified: false,
+          otp,
+          otpExpiry: new Date(Date.now() + this.OTP_LIFETIME),
+        },
+      });
+
+      await this.emailService.sendOtpEmail(createdUser.email, otp);
+      return createdUser;
+    });
+
+    return {
+      message: "Signup successful. OTP sent to email for verification.",
+    };
+  }
+
+  async resendOtp(email: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+      select: { id: true, email: true, verified: true },
+    });
+
+    if (!user) throw new NotFoundException("User not found");
+
+    if (user.verified) throw new BadRequestException("Account is already verified.");
+
+    const otp = this.generateOtp();
+
+    await this.prisma.user.update({
+      where: { id: user.id },
       data: {
-        name: dto.name,
-        role: dto.role,
-        email: dto.email,
-        password: hashedPassword,
-        profileImage: dto.profileImage,
-        cnic: dto.cnic,
-        otpExpiry: new Date(Date.now() + this.OTP_LIFETIME),
         otp,
+        otpExpiry: new Date(Date.now() + this.OTP_LIFETIME),
       },
     });
 
     await this.emailService.sendOtpEmail(user.email, otp);
 
     return {
-      message: "Signup successful. OTP sent to email for verification.",
+      message: "OTP resent successfully. Check your email.",
+      otpResent: true,
     };
   }
 
@@ -146,6 +198,8 @@ export class AuthService {
     });
 
     if (!user) throw new NotFoundException("User not found");
+
+    if (user.verified) throw new BadRequestException("Account is already verified.");
 
     if (!user.otp || !user.otpExpiry) throw new BadRequestException("No OTP generated");
 
@@ -198,8 +252,8 @@ export class AuthService {
 
       if (!user.verified) throw new UnauthorizedException("Account not verified");
 
-      const token = await this.signToken(user.id, user.email, user.role);
-      return { accessToken: token, user };
+      const token = await this.buildAuthResponse(user);
+      return { accessToken: token.accessToken, user };
     }
 
     if (!dto.password) throw new BadRequestException("Password is required");
@@ -214,8 +268,8 @@ export class AuthService {
     const isPasswordValid = await bcrypt.compare(dto.password, user.password);
     if (!isPasswordValid) throw new UnauthorizedException("Invalid credentials");
 
-    const token = await this.signToken(user.id, user.email, user.role);
-    return { accessToken: token, user };
+    const token = await this.buildAuthResponse(user);
+    return { accessToken: token.accessToken, user };
   }
 
   async forgotPassword(dto: ForgotPasswordDto) {

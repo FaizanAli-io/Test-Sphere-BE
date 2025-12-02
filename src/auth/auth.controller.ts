@@ -37,6 +37,15 @@ export class AuthController {
     return this.authService.signup(dto);
   }
 
+  @Post("resend-otp")
+  @ApiOperation({ summary: "Resend OTP for account verification" })
+  @ApiResponse({ status: 200, description: "OTP resent successfully." })
+  @ApiResponse({ status: 404, description: "User not found." })
+  @ApiResponse({ status: 400, description: "Account already verified." })
+  async resendOtp(@Body() dto: { email: string }) {
+    return this.authService.resendOtp(dto.email);
+  }
+
   @Post("verify-otp")
   @ApiOperation({ summary: "Verify OTP to activate account" })
   @ApiResponse({ status: 200, description: "Account verified successfully." })

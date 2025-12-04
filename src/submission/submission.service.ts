@@ -39,25 +39,24 @@ export class SubmissionService {
   async startTest(userId: number, dto: StartSubmissionDto) {
     const test = await this.prisma.test.findUnique({
       where: { id: dto.testId },
-      select: { id: true, status: true },
+      select: { id: true, startAt: true, endAt: true, status: true },
     });
 
     if (!test) throw new NotFoundException("Test not found");
     if (test.status !== TestStatus.ACTIVE) throw new BadRequestException("Test is not active");
 
-    const overWrite = true; // Set to true to allow multiple submissions for testing purposes
+    const now = new Date();
 
-    if (overWrite) {
-      return this.prisma.submission.upsert({
-        where: { userId_testId: { userId, testId: dto.testId } },
-        update: { startedAt: new Date() },
-        create: {
-          userId,
-          testId: dto.testId,
-          startedAt: new Date(),
-          status: SubmissionStatus.IN_PROGRESS,
-        },
-      });
+    if (now < test.startAt) {
+      const diffMs = test.startAt.getTime() - now.getTime();
+      const minutes = Math.ceil(diffMs / 60000);
+      throw new BadRequestException(`Test starts in ${minutes} minutes`);
+    }
+
+    if (now > test.endAt) {
+      const diffMs = now.getTime() - test.endAt.getTime();
+      const minutes = Math.ceil(diffMs / 60000);
+      throw new BadRequestException(`Test ended ${minutes} minutes ago`);
     }
 
     const existing = await this.prisma.submission.findUnique({

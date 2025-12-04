@@ -11,7 +11,13 @@ import {
 } from "@nestjs/common";
 import { ApiTags, ApiResponse, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
 
-import { CreateTestDto, UpdateTestDto, AddQuestionsDto, UpdateQuestionDto } from "./test.dto";
+import {
+  CreateTestDto,
+  UpdateTestDto,
+  AddQuestionsDto,
+  UpdateQuestionDto,
+  UpdateTestConfigDto,
+} from "./test.dto";
 import { UserRole } from "@prisma/client";
 import { TestService } from "./test.service";
 import { RolesGuard } from "../common/guards/roles.guard";
@@ -69,6 +75,18 @@ export class TestController {
   @ApiResponse({ status: 200, description: "Test deleted successfully" })
   async deleteTest(@Param("id", ParseIntPipe) id: number, @GetUser("id") userId: number) {
     return this.testService.deleteTest(id, userId);
+  }
+
+  @Patch(":id/config")
+  @Roles(UserRole.TEACHER)
+  @ApiOperation({ summary: "Update a test configuration (Teacher only)" })
+  @ApiResponse({ status: 200, description: "Configuration updated successfully" })
+  async updateTestConfig(
+    @Param("id", ParseIntPipe) id: number,
+    @Body() dto: UpdateTestConfigDto,
+    @GetUser("id") userId: number,
+  ) {
+    return this.testService.updateTestConfig(id, dto, userId);
   }
 
   @Get(":testId/questions")

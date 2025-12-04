@@ -59,31 +59,50 @@ export class UploadService {
     return response.json();
   }
 
-  async deleteImages(fileIds: string[]) {
+  async deleteImages(fileIds: string[], concurrency = 5) {
     if (!fileIds.length) return [];
 
     const auth = Buffer.from(`${this.privateKey}:`).toString("base64");
     const results: { fileId: string; success: boolean; error?: string }[] = [];
 
-    for (const fileId of fileIds) {
-      const response = await fetch(`https://api.imagekit.io/v1/files/${fileId}`, {
-        method: "DELETE",
-        headers: { Authorization: `Basic ${auth}` },
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        results.push({
-          fileId,
-          success: false,
-          error: `${response.status} ${errorText}`,
+    const deleteFile = async (fileId: string) => {
+      try {
+        const res = await fetch(`https://api.imagekit.io/v1/files/${fileId}`, {
+          method: "DELETE",
+          headers: { Authorization: `Basic ${auth}` },
         });
-        continue;
-      }
 
-      results.push({ fileId, success: true });
+        if (!res.ok) {
+          return {
+            fileId,
+            success: false,
+            error: `${res.status} ${await res.text()}`,
+          };
+        }
+
+        return { fileId, success: true };
+      } catch (err: any) {
+        return { fileId, success: false, error: String(err) };
+      }
+    };
+
+    // concurrency-limited runner
+    const queue = [...fileIds];
+    const workers: Promise<void>[] = [];
+
+    for (let i = 0; i < concurrency; i++) {
+      workers.push(
+        (async () => {
+          while (queue.length) {
+            const id = queue.shift()!;
+            const result = await deleteFile(id);
+            results.push(result);
+          }
+        })(),
+      );
     }
 
+    await Promise.all(workers);
     return results;
   }
 }

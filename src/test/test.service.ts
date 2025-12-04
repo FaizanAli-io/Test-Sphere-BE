@@ -4,7 +4,13 @@ import {
   ForbiddenException,
   BadRequestException,
 } from "@nestjs/common";
-import { CreateTestDto, UpdateTestDto, AddQuestionsDto, UpdateQuestionDto } from "./test.dto";
+import {
+  CreateTestDto,
+  UpdateTestDto,
+  AddQuestionsDto,
+  UpdateQuestionDto,
+  UpdateTestConfigDto,
+} from "./test.dto";
 import { PrismaService } from "../prisma/prisma.service";
 import { SubmissionStatus, UserRole } from "@prisma/client";
 
@@ -72,6 +78,12 @@ export class TestService {
         ...dto,
         startAt: new Date(dto.startAt),
         endAt: new Date(dto.endAt),
+        config: {
+          multipleScreens: false,
+          webcamRequired: true,
+          maxViolationCount: 0,
+          maxViolationDuration: 0,
+        },
       },
     });
   }
@@ -108,6 +120,22 @@ export class TestService {
         startAt: this.parseDate(dto.startAt),
         endAt: this.parseDate(dto.endAt),
       },
+    });
+  }
+
+  async updateTestConfig(testId: number, dto: UpdateTestConfigDto, userId: number) {
+    const test = await this.prisma.test.findUnique({
+      where: { id: testId },
+      select: { classId: true, config: true },
+    });
+
+    if (!test) throw new NotFoundException("Test not found");
+
+    await this.ensureTeacherOwnsClass(userId, test.classId);
+
+    return this.prisma.test.update({
+      where: { id: testId },
+      data: { config: { ...(test.config as Record<string, any>), ...dto } },
     });
   }
 

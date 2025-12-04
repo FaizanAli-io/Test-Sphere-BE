@@ -7,6 +7,7 @@ import {
   IsEnum,
   IsArray,
   IsString,
+  IsBoolean,
   IsPositive,
   IsOptional,
   IsDateString,
@@ -216,4 +217,24 @@ export class AddQuestionsDto {
   @ValidateNested({ each: true })
   @Type(() => CreateQuestionDto)
   questions: CreateQuestionDto[];
+}
+
+export class UpdateTestConfigDto {
+  @IsBoolean()
+  @IsOptional()
+  multipleScreens?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  webcamRequired?: boolean;
+
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  maxViolationCount?: number;
+
+  @IsInt()
+  @Min(0)
+  @IsOptional()
+  maxViolationDuration?: number;
 }

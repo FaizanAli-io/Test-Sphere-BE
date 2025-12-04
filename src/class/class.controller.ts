@@ -107,4 +107,26 @@ export class ClassController {
   ) {
     return this.classService.approveStudent(classId, dto, userId);
   }
+
+  @Post(":id/approve-all")
+  @Roles(UserRole.TEACHER)
+  @ApiOperation({ summary: "Approve all pending join requests (Teacher only)" })
+  @ApiResponse({ status: 200, description: "All pending requests approved successfully" })
+  async approveAllPending(
+    @Param("id", ParseIntPipe) classId: number,
+    @GetUser("id") userId: number,
+  ) {
+    return this.classService.approveAllPending(classId, userId);
+  }
+
+  @Post(":id/reject-all")
+  @Roles(UserRole.TEACHER)
+  @ApiOperation({ summary: "Reject all pending join requests (Teacher only)" })
+  @ApiResponse({ status: 200, description: "All pending requests rejected successfully" })
+  async rejectAllPending(
+    @Param("id", ParseIntPipe) classId: number,
+    @GetUser("id") userId: number,
+  ) {
+    return this.classService.rejectAllPending(classId, userId);
+  }
 }

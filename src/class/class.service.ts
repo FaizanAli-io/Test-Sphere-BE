@@ -150,4 +150,41 @@ export class ClassService {
 
     return { message: "Student approved successfully" };
   }
+
+  async approveAllPending(classId: number, userId: number) {
+    const cls = await this.prisma.class.findUnique({ where: { id: classId } });
+    if (!cls) throw new NotFoundException("Class not found");
+    if (cls.teacherId !== userId) throw new ForbiddenException("Only teacher can approve students");
+
+    const result = await this.prisma.studentClass.updateMany({
+      where: {
+        classId,
+        approved: false,
+      },
+      data: { approved: true },
+    });
+
+    return {
+      message: `${result.count} student(s) approved successfully`,
+      count: result.count,
+    };
+  }
+
+  async rejectAllPending(classId: number, userId: number) {
+    const cls = await this.prisma.class.findUnique({ where: { id: classId } });
+    if (!cls) throw new NotFoundException("Class not found");
+    if (cls.teacherId !== userId) throw new ForbiddenException("Only teacher can reject students");
+
+    const result = await this.prisma.studentClass.deleteMany({
+      where: {
+        classId,
+        approved: false,
+      },
+    });
+
+    return {
+      message: `${result.count} pending request(s) rejected successfully`,
+      count: result.count,
+    };
+  }
 }

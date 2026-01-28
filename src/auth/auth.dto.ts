@@ -11,7 +11,7 @@ import {
   MinLength,
   ValidateIf,
 } from "class-validator";
-import { UserRole } from "@prisma/client";
+import { UserRole } from "../typeorm/entities";
 
 function IsCnic() {
   return Matches(/^\d{13}$/, {

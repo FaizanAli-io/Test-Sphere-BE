@@ -12,7 +12,7 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from "@nestjs/swagger";
 
 import { JoinClassDto, CreateClassDto, UpdateClassDto, ManageStudentDto } from "./class.dto";
-import { UserRole } from "@prisma/client";
+import { UserRole } from "../typeorm/entities";
 import { ClassService } from "./class.service";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";

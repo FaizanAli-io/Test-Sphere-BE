@@ -16,7 +16,7 @@ import {
   ApiOperation,
   ApiBearerAuth,
 } from "@nestjs/swagger";
-import { UserRole } from "@prisma/client";
+import { UserRole } from "../typeorm/entities";
 
 import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";

@@ -12,7 +12,7 @@ import {
   ValidationArguments,
 } from "class-validator";
 import { Type } from "class-transformer";
-import { LogType } from "@prisma/client";
+import { LogType } from "../typeorm/entities";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 // ===== Image-based logs (SCREENSHOT, WEBCAM_PHOTO) =====

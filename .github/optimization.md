@@ -56,8 +56,8 @@ These changes are safe and welcomed.
 
 ### 4. **Database Query Optimizations (No logic changes)**
 
-- Add Prisma `select` to reduce returned data.
-- Use Prisma `include` instead of manual population loops.
+- Use repository `select` projections to return only needed columns.
+- Prefer relation joins/load strategies instead of manual population loops.
 - Avoid N+1 queries when refactoring does NOT change logic.
 - Ensure indexes exist (but don't change schema shape).
 

@@ -1,23 +1,18 @@
 import { Module } from "@nestjs/common";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { MulterModule } from "@nestjs/platform-express";
+import { memoryStorage } from "multer";
+
 import { TestService } from "./test.service";
 import { TestController } from "./test.controller";
-import { PrismaModule } from "../prisma/prisma.module";
-
-import { extname } from "path";
-import { diskStorage } from "multer";
-import { MulterModule } from "@nestjs/platform-express";
+import { Test, Question, Submission, Answer } from "../typeorm/entities";
 
 @Module({
   imports: [
-    PrismaModule,
+    TypeOrmModule.forFeature([Test, Question, Submission, Answer]),
     MulterModule.register({
-      storage: diskStorage({
-        destination: "./uploads",
-        filename: (_, file, callback) => {
-          const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-          callback(null, `${uniqueSuffix}${extname(file.originalname)}`);
-        },
-      }),
+      storage: memoryStorage(),
+      limits: { fileSize: 10 * 1024 * 1024 }, // 10MB — adjust as needed
     }),
   ],
   controllers: [TestController],

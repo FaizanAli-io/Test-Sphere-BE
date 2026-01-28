@@ -1,6 +1,11 @@
 import pdfParse from "pdf-parse";
 import { ConfigService } from "@config/config.service";
-import { Injectable, BadRequestException, Logger } from "@nestjs/common";
+import {
+  Injectable,
+  BadRequestException,
+  Logger,
+  ServiceUnavailableException,
+} from "@nestjs/common";
 
 import { generateStructuredQuestions } from "./question-helpers";
 
@@ -12,15 +17,22 @@ export class AgentService {
 
   constructor(private config: ConfigService) {
     this.apiKey = this.config.get<string>("OPENROUTER_API_KEY") ?? "";
-    if (!this.apiKey) throw new Error("Missing OPENROUTER_API_KEY");
     this.systemPrompt = `You are Prep Guru, an AI assistant and agent of the Test Sphere website. Your job is to help students with exam preparation: explain concepts clearly, provide study tips, suggest practice problems, and give guidance on revision strategies. You are strictly an educational bot for exam preparation and must not respond to requests outside of that scope. If a user asks something unrelated (political, medical, legal, personal advice beyond study tips, etc.), politely refuse and steer them back to exam-prep context.`;
   }
 
+  private getApiKey(): string {
+    if (this.apiKey) return this.apiKey;
+
+    this.logger.error("OpenRouter API key is missing from configuration");
+    throw new ServiceUnavailableException("OpenRouter API key is not configured");
+  }
+
   async streamCompletion(prompt: string, res: any) {
+    const apiKey = this.getApiKey();
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${this.apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -57,7 +69,7 @@ export class AgentService {
   }
 
   async generateQuestionsFromPrompt(prompt: string) {
-    const questions = await generateStructuredQuestions(this.apiKey, prompt);
+    const questions = await generateStructuredQuestions(this.getApiKey(), prompt);
 
     return {
       message: `Successfully generated ${questions.length} questions.`,

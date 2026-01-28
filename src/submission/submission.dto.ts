@@ -9,7 +9,7 @@ import {
   ValidateNested,
 } from "class-validator";
 import { Type } from "class-transformer";
-import { SubmissionStatus } from "@prisma/client";
+import { SubmissionStatus } from "../typeorm/entities";
 
 export class StartSubmissionDto {
   @ApiProperty({ example: 1, description: "ID of the test to start" })

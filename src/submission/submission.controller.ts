@@ -17,7 +17,7 @@ import {
   GradeSubmissionDto,
   UpdateSubmissionStatusDto,
 } from "./submission.dto";
-import { UserRole } from "@prisma/client";
+import { UserRole } from "../typeorm/entities";
 import { SubmissionService } from "./submission.service";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";

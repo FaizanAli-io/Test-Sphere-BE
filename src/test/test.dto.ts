@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { TestStatus, QuestionType } from "@prisma/client";
+import { TestStatus, QuestionType } from "../typeorm/entities";
 
 import {
   Min,

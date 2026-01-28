@@ -9,7 +9,6 @@ import {
   Controller,
   ParseIntPipe,
 } from "@nestjs/common";
-import { ApiTags, ApiResponse, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
 
 import {
   CreateTestDto,
@@ -18,12 +17,15 @@ import {
   UpdateQuestionDto,
   UpdateTestConfigDto,
 } from "./test.dto";
-import { UserRole } from "@prisma/client";
+
 import { TestService } from "./test.service";
+import { UserRole } from "../typeorm/entities";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { GetUser } from "../common/decorators/get-user.decorator";
+
+import { ApiTags, ApiResponse, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
 
 @ApiTags("Tests")
 @ApiBearerAuth()

@@ -8,6 +8,7 @@ import {
   Index,
 } from "typeorm";
 import { Test } from "./test.entity";
+import { QuestionPool } from "./index";
 import { Answer } from "./answer.entity";
 
 export enum QuestionType {
@@ -19,6 +20,7 @@ export enum QuestionType {
 
 @Entity("question")
 @Index(["testId"])
+@Index(["questionPoolId"])
 export class Question {
   @PrimaryGeneratedColumn()
   id: number;
@@ -52,6 +54,15 @@ export class Question {
   })
   @JoinColumn({ name: "testId" })
   test: Test;
+
+  @Column({ nullable: true })
+  questionPoolId: number | null;
+
+  @ManyToOne(() => QuestionPool, (pool: QuestionPool) => pool.questions, {
+    onDelete: "SET NULL",
+  })
+  @JoinColumn({ name: "questionPoolId" })
+  questionPool: QuestionPool;
 
   @OneToMany(() => Answer, (answer) => answer.question)
   answers: Answer[];

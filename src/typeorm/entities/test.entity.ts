@@ -10,6 +10,7 @@ import {
 } from "typeorm";
 import { Class } from "./class.entity";
 import { Question } from "./question.entity";
+import { QuestionPool } from "./index";
 import { Submission } from "./submission.entity";
 
 export enum TestStatus {
@@ -31,9 +32,6 @@ export class Test {
 
   @Column({ type: "text", nullable: true })
   description: string | null;
-
-  @Column({ nullable: true })
-  numQuestions: number;
 
   @Column()
   duration: number;
@@ -65,6 +63,9 @@ export class Test {
   })
   @JoinColumn({ name: "classId" })
   class: Class;
+
+  @OneToMany(() => QuestionPool, (pool: QuestionPool) => pool.test)
+  questionPools: QuestionPool[];
 
   @OneToMany(() => Question, (question) => question.test)
   questions: Question[];

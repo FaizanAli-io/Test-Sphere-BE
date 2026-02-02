@@ -10,17 +10,13 @@ import {
   AddQuestionsDto,
   UpdateQuestionDto,
   UpdateTestConfigDto,
+  CreateQuestionPoolDto,
+  UpdateQuestionPoolDto,
 } from "./test.dto";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, DataSource } from "typeorm";
-import {
-  Test,
-  Question,
-  Submission,
-  Answer,
-  SubmissionStatus,
-  UserRole,
-} from "../typeorm/entities";
+import { Test, Question, QuestionPool, SubmissionStatus, UserRole } from "../typeorm/entities";
+import { TestMode } from "./test-mode.enum";
 
 @Injectable()
 export class TestService {
@@ -29,10 +25,8 @@ export class TestService {
     private testRepository: Repository<Test>,
     @InjectRepository(Question)
     private questionRepository: Repository<Question>,
-    @InjectRepository(Submission)
-    private submissionRepository: Repository<Submission>,
-    @InjectRepository(Answer)
-    private answerRepository: Repository<Answer>,
+    @InjectRepository(QuestionPool)
+    private questionPoolRepository: Repository<QuestionPool>,
     private dataSource: DataSource,
   ) {}
 
@@ -73,6 +67,20 @@ export class TestService {
       throw new ForbiddenException("You cannot modify this question.");
 
     return question;
+  }
+
+  private async ensureTeacherOwnsPool(userId: number, poolId: number) {
+    const pool = await this.questionPoolRepository.findOne({
+      where: { id: poolId },
+      relations: { test: { class: true } },
+      select: { id: true, test: { id: true, class: { id: true, teacherId: true } } },
+    });
+
+    if (!pool) throw new NotFoundException("Question pool not found.");
+    if (pool.test.class.teacherId !== userId)
+      throw new ForbiddenException("You cannot modify this question pool.");
+
+    return pool;
   }
 
   private validateDates(startAt?: string, endAt?: string) {
@@ -184,6 +192,14 @@ export class TestService {
         .where("testId = :testId", { testId: id })
         .execute();
 
+      // Delete question pools
+      await queryRunner.manager
+        .createQueryBuilder()
+        .delete()
+        .from("QuestionPool")
+        .where("testId = :testId", { testId: id })
+        .execute();
+
       // Delete test
       await queryRunner.manager
         .createQueryBuilder()
@@ -203,44 +219,103 @@ export class TestService {
     return { message: "Test deleted successfully" };
   }
 
-  async getQuestionsByTestId(testId: number, role: string) {
+  async getQuestionsByTestId(testId: number, role: string, mode?: string) {
     const test = await this.testRepository.findOne({
       where: { id: testId },
-      select: { numQuestions: true },
+      select: { id: true },
     });
 
-    const allQuestions = await this.questionRepository.find({
-      where: { testId },
-      select: {
-        id: true,
-        text: true,
-        type: true,
-        options: true,
-        correctAnswer: true,
-        maxMarks: true,
-      },
-      order: { id: "ASC" },
-    });
+    if (!test) throw new NotFoundException("Test not found.");
 
-    if (
-      !test?.numQuestions ||
-      role === UserRole.TEACHER ||
-      test.numQuestions >= allQuestions.length
-    ) {
-      return allQuestions;
+    const selectFields = {
+      id: true,
+      text: true,
+      type: true,
+      options: true,
+      correctAnswer: true,
+      maxMarks: true,
+      questionPoolId: true,
+    } as any;
+
+    // Teachers always see all questions
+    if (role === UserRole.TEACHER) {
+      return this.questionRepository.find({
+        where: { testId },
+        select: selectFields,
+        order: { id: "ASC" },
+      });
     }
 
-    const shuffled = allQuestions.sort(() => Math.random() - 0.5);
-    const selected = shuffled.slice(0, test.numQuestions);
+    // Determine effective mode (default STATIC)
+    let effectiveMode: TestMode = TestMode.STATIC;
+    if (mode) {
+      if (mode === TestMode.POOL) effectiveMode = TestMode.POOL;
+      else if (mode === TestMode.STATIC) effectiveMode = TestMode.STATIC;
+      else throw new BadRequestException("Invalid mode");
+    }
+
+    // STATIC mode: include all questions
+    if (effectiveMode === TestMode.STATIC) {
+      return this.questionRepository.find({
+        where: { testId },
+        select: selectFields,
+        order: { id: "ASC" },
+      });
+    }
+
+    // POOL mode: select based on pools
+    const pools = await this.questionPoolRepository.find({
+      where: { testId },
+      select: { id: true, config: true },
+    });
+
+    const selected: any[] = [];
+    const selectedIds = new Set<number>();
+
+    for (const pool of pools) {
+      const poolQuestions = await this.questionRepository.find({
+        where: { questionPoolId: pool.id },
+        select: selectFields,
+      });
+
+      // Group by type
+      const typeMap = new Map<string, typeof poolQuestions>([]);
+      for (const q of poolQuestions) {
+        const arr = typeMap.get(q.type) || [];
+        arr.push(q);
+        typeMap.set(q.type, arr);
+      }
+
+      for (const [typeKey, count] of Object.entries(pool.config || {})) {
+        const need = Number(count) || 0;
+        if (need <= 0) continue;
+        const candidates = (typeMap.get(typeKey) || []).filter((q) => !selectedIds.has(q.id));
+        if (!candidates.length) continue;
+
+        // Shuffle candidates (Fisher-Yates)
+        for (let i = candidates.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+        }
+
+        const take = Math.min(need, candidates.length);
+        const chosen = candidates.slice(0, take);
+        for (const q of chosen) {
+          selectedIds.add(q.id);
+          selected.push(q);
+        }
+      }
+    }
 
     return selected;
   }
 
   async addQuestions(testId: number, dto: AddQuestionsDto, userId: number) {
     await this.ensureTeacherOwnsTest(userId, testId);
-    const questions = dto.questions.map((q) => this.questionRepository.create({ ...q, testId }));
 
-    await this.questionRepository.save(questions);
+    const rows = dto.questions.map((q) => ({ ...q, testId }));
+    await this.questionRepository.insert(rows);
+
     return { message: "Questions added successfully" };
   }
 
@@ -260,6 +335,73 @@ export class TestService {
 
     await this.questionRepository.delete({ id });
     return { message: "Question removed successfully" };
+  }
+
+  // QuestionPool CRUD
+  async getQuestionPoolsByTestId(testId: number) {
+    return this.questionPoolRepository.find({
+      where: { testId },
+      order: { id: "ASC" },
+    });
+  }
+
+  async getQuestionPoolById(id: number) {
+    const pool = await this.questionPoolRepository.findOne({ where: { id } });
+    if (!pool) throw new NotFoundException("Question pool not found.");
+    return pool;
+  }
+
+  async createQuestionPool(testId: number, dto: CreateQuestionPoolDto, userId: number) {
+    await this.ensureTeacherOwnsTest(userId, testId);
+    const pool = this.questionPoolRepository.create({
+      testId,
+      title: dto.title,
+      config: dto.config,
+    });
+    return this.questionPoolRepository.save(pool);
+  }
+
+  async updateQuestionPool(id: number, dto: UpdateQuestionPoolDto, userId: number) {
+    const pool = await this.ensureTeacherOwnsPool(userId, id);
+    Object.assign(pool, dto);
+    return this.questionPoolRepository.save(pool);
+  }
+
+  async deleteQuestionPool(id: number, userId: number) {
+    await this.ensureTeacherOwnsPool(userId, id);
+    await this.questionPoolRepository.delete({ id });
+    return { message: "Question pool removed successfully" };
+  }
+
+  async addQuestionsToPool(poolId: number, questionIds: number[], userId: number) {
+    if (!questionIds || !questionIds.length)
+      throw new BadRequestException("questionIds is required");
+    const pool = await this.ensureTeacherOwnsPool(userId, poolId);
+
+    // Only update questions that belong to the same test
+    const result = await this.questionRepository
+      .createQueryBuilder()
+      .update()
+      .set({ questionPoolId: poolId })
+      .where("id IN (:...ids) AND testId = :testId", { ids: questionIds, testId: pool.test.id })
+      .execute();
+
+    return { message: "Questions added to pool successfully", affected: result.affected || 0 };
+  }
+
+  async removeQuestionsFromPool(poolId: number, questionIds: number[], userId: number) {
+    if (!questionIds || !questionIds.length)
+      throw new BadRequestException("questionIds is required");
+    await this.ensureTeacherOwnsPool(userId, poolId);
+
+    const result = await this.questionRepository
+      .createQueryBuilder()
+      .update()
+      .set({ questionPoolId: null })
+      .where("id IN (:...ids) AND questionPoolId = :poolId", { ids: questionIds, poolId })
+      .execute();
+
+    return { message: "Questions removed from pool successfully", affected: result.affected || 0 };
   }
 
   async getStudentsByTestId(testId: number, userId: number) {

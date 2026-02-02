@@ -8,6 +8,8 @@ import {
   UseGuards,
   Controller,
   ParseIntPipe,
+  Query,
+  ParseEnumPipe,
 } from "@nestjs/common";
 
 import {
@@ -20,12 +22,13 @@ import {
 
 import { TestService } from "./test.service";
 import { UserRole } from "../typeorm/entities";
+import { TestMode } from "./test-mode.enum";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { Roles } from "../common/decorators/roles.decorator";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { GetUser } from "../common/decorators/get-user.decorator";
 
-import { ApiTags, ApiResponse, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
+import { ApiTags, ApiResponse, ApiOperation, ApiBearerAuth, ApiQuery } from "@nestjs/swagger";
 
 @ApiTags("Tests")
 @ApiBearerAuth()
@@ -93,12 +96,14 @@ export class TestController {
 
   @Get(":testId/questions")
   @ApiOperation({ summary: "Get all questions for a test" })
+  @ApiQuery({ name: "mode", required: false, enum: TestMode })
   @ApiResponse({ status: 200, description: "Returns questions for a test" })
   async getQuestionsByTest(
     @Param("testId", ParseIntPipe) testId: number,
     @GetUser("role") userRole: UserRole,
+    @Query("mode", new ParseEnumPipe(TestMode)) mode?: TestMode,
   ) {
-    return this.testService.getQuestionsByTestId(testId, userRole);
+    return this.testService.getQuestionsByTestId(testId, userRole, mode);
   }
 
   @Post(":testId/questions")

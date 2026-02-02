@@ -1,21 +1,38 @@
-import { DataSource } from "typeorm";
-import { User } from "./entities/user.entity";
-import { Class } from "./entities/class.entity";
-import { StudentClass } from "./entities/student-class.entity";
-import { Test } from "./entities/test.entity";
-import { Question } from "./entities/question.entity";
-import { Submission } from "./entities/submission.entity";
-import { Answer } from "./entities/answer.entity";
-import { ProctoringLog } from "./entities/proctoring-log.entity";
+import "dotenv/config";
+import { join } from "path";
+import { DataSourceOptions } from "typeorm";
 
-export const AppDataSource = new DataSource({
-  type: "mysql",
-  host: process.env.DATABASE_HOST || "localhost",
-  port: parseInt(process.env.DATABASE_PORT || "3306", 10),
-  username: process.env.DATABASE_USER || "root",
-  password: process.env.DATABASE_PASSWORD || "",
-  database: process.env.DATABASE_NAME || "test_sphere",
-  entities: [User, Class, StudentClass, Test, Question, Submission, Answer, ProctoringLog],
-  synchronize: false,
-  logging: process.env.NODE_ENV === "development",
-});
+export function createTypeOrmConfig(): DataSourceOptions {
+  const databaseUrl = process.env.DATABASE_URL;
+
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL is required");
+  }
+
+  let url: URL;
+
+  try {
+    url = new URL(databaseUrl);
+  } catch (error) {
+    throw new Error("DATABASE_URL is not a valid URL");
+  }
+
+  if (!url.hostname || !url.port || !url.pathname || !url.username || !url.password) {
+    throw new Error("DATABASE_URL is missing required components");
+  }
+
+  return {
+    type: "mysql",
+    synchronize: true,
+    host: url.hostname,
+    port: Number(url.port),
+    database: url.pathname.replace(/^\//, ""),
+    username: decodeURIComponent(url.username),
+    password: decodeURIComponent(url.password),
+    logging: process.env.NODE_ENV === "development",
+
+    // 👇 GLOB PATTERNS
+    migrations: [join(__dirname, "migrations", "*.{ts,js}")],
+    entities: [join(__dirname, "entities", "**", "*.entity.{ts,js}")],
+  };
+}

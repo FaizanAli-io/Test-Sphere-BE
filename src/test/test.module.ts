@@ -5,17 +5,18 @@ import { memoryStorage } from "multer";
 
 import { TestService } from "./test.service";
 import { TestController } from "./test.controller";
-import { Test, Question, Submission, Answer } from "../typeorm/entities";
+import { QuestionPoolController } from "./question-pool.controller";
+import { Test, Question, QuestionPool, Submission, Answer } from "../typeorm/entities";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Test, Question, Submission, Answer]),
+    TypeOrmModule.forFeature([Test, Question, QuestionPool, Submission, Answer]),
     MulterModule.register({
       storage: memoryStorage(),
       limits: { fileSize: 10 * 1024 * 1024 }, // 10MB — adjust as needed
     }),
   ],
-  controllers: [TestController],
+  controllers: [TestController, QuestionPoolController],
   providers: [TestService],
   exports: [TestService],
 })

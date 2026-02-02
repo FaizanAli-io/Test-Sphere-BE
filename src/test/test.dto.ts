@@ -13,8 +13,10 @@ import {
   IsDateString,
   ValidateNested,
   ValidateIf,
+  IsObject,
+  ArrayNotEmpty,
 } from "class-validator";
-import { Type } from "class-transformer";
+import { Type, Transform } from "class-transformer";
 
 export class CreateTestDto {
   @ApiProperty({ example: 12 })
@@ -32,12 +34,6 @@ export class CreateTestDto {
   @IsOptional()
   @IsString()
   description?: string;
-
-  @ApiProperty({ required: false, example: 5 })
-  @IsOptional()
-  @IsPositive()
-  @IsInt()
-  numQuestions?: number;
 
   @ApiProperty({ example: 90, description: "Duration in minutes" })
   @IsInt()
@@ -73,12 +69,6 @@ export class UpdateTestDto {
   @IsString()
   description?: string;
 
-  @ApiProperty({ required: false, example: 5 })
-  @IsOptional()
-  @IsPositive()
-  @IsInt()
-  numQuestions?: number;
-
   @ApiProperty({ required: false, example: 100 })
   @IsOptional()
   @IsInt()
@@ -105,9 +95,10 @@ export class UpdateTestDto {
 }
 
 export class CreateQuestionDto {
-  @ApiProperty({ example: 55 })
+  @ApiProperty({ required: false, example: 1 })
+  @IsOptional()
   @IsInt()
-  testId: number;
+  questionPoolId?: number;
 
   @ApiProperty({ example: "What is the derivative of x^2?" })
   @IsString()
@@ -190,6 +181,11 @@ export class UpdateQuestionDto {
   @IsInt()
   maxMarks?: number;
 
+  @ApiProperty({ required: false, example: 1 })
+  @IsOptional()
+  @IsInt()
+  questionPoolId?: number;
+
   @ApiProperty({
     required: false,
     example: "https://cdn.example.com/images/derivative-q2.png",
@@ -204,12 +200,12 @@ export class AddQuestionsDto {
     type: [CreateQuestionDto],
     example: [
       {
-        testId: 55,
         text: "What is the derivative of x^2?",
         type: "MULTIPLE_CHOICE",
         options: ["2x", "x", "x^2", "2"],
         correctAnswer: 0,
         maxMarks: 5,
+        questionPoolId: 1,
         image: "https://cdn.example.com/images/derivative-q1.png",
       },
     ],
@@ -237,4 +233,40 @@ export class UpdateTestConfigDto {
   @Min(0)
   @IsOptional()
   maxViolationDuration?: number;
+}
+
+import { Validate } from "class-validator";
+import { IsValidPoolConfig } from "./validators/pool-config.validator";
+
+export class CreateQuestionPoolDto {
+  @ApiProperty({ example: "Algebra MCQs" })
+  @IsString()
+  title: string;
+
+  @ApiProperty({ example: { MULTIPLE_CHOICE: 5, TRUE_FALSE: 5, SHORT_ANSWER: 5, LONG_ANSWER: 5 } })
+  @IsObject()
+  @Validate(IsValidPoolConfig)
+  config: Record<string, number>;
+}
+
+export class UpdateQuestionPoolDto {
+  @ApiProperty({ required: false, example: "Algebra MCQs (updated)" })
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @ApiProperty({ required: false, example: { MULTIPLE_CHOICE: 3 } })
+  @IsOptional()
+  @IsObject()
+  @Validate(IsValidPoolConfig)
+  config?: Record<string, number>;
+}
+
+export class BulkQuestionPoolUpdateDto {
+  @ApiProperty({ example: [1, 2, 3], description: "One ID or an array of IDs" })
+  @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsInt({ each: true })
+  questionIds: number[];
 }

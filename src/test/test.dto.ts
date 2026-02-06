@@ -1,22 +1,22 @@
-import { ApiProperty } from "@nestjs/swagger";
-import { TestStatus, QuestionType } from "../typeorm/entities";
-
 import {
   Min,
   IsInt,
   IsEnum,
   IsArray,
+  IsObject,
   IsString,
   IsBoolean,
-  IsPositive,
   IsOptional,
   IsDateString,
-  ValidateNested,
+  Validate,
   ValidateIf,
-  IsObject,
+  ValidateNested,
   ArrayNotEmpty,
 } from "class-validator";
+import { ApiProperty } from "@nestjs/swagger";
 import { Type, Transform } from "class-transformer";
+import { TestStatus, QuestionType } from "../typeorm/entities";
+import { IsValidPoolConfig } from "./validators/pool-config.validator";
 
 export class CreateTestDto {
   @ApiProperty({ example: 12 })
@@ -218,11 +218,15 @@ export class AddQuestionsDto {
 export class UpdateTestConfigDto {
   @IsBoolean()
   @IsOptional()
-  multipleScreens?: boolean;
+  pooling?: boolean;
 
   @IsBoolean()
   @IsOptional()
   webcamRequired?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  multipleScreens?: boolean;
 
   @IsInt()
   @Min(0)
@@ -234,9 +238,6 @@ export class UpdateTestConfigDto {
   @IsOptional()
   maxViolationDuration?: number;
 }
-
-import { Validate } from "class-validator";
-import { IsValidPoolConfig } from "./validators/pool-config.validator";
 
 export class CreateQuestionPoolDto {
   @ApiProperty({ example: "Algebra MCQs" })

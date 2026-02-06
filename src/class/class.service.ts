@@ -1,23 +1,29 @@
-import {
-  Injectable,
-  ConflictException,
-  NotFoundException,
-  ForbiddenException,
-} from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { JoinClassDto, CreateClassDto, UpdateClassDto, ManageStudentDto } from "./class.dto";
-import { UserRole, Class, StudentClass, User } from "../typeorm/entities";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Injectable, ConflictException, NotFoundException } from "@nestjs/common";
+import {
+  JoinClassDto,
+  CreateClassDto,
+  UpdateClassDto,
+  ManageStudentDto,
+  InviteTeacherDto,
+} from "./class.dto";
+import {
+  User,
+  Class,
+  ClassTeacher,
+  StudentClass,
+  UserRole,
+  ClassTeacherRole,
+} from "../typeorm/entities";
 
 @Injectable()
 export class ClassService {
   constructor(
-    @InjectRepository(Class)
-    private classRepository: Repository<Class>,
-    @InjectRepository(StudentClass)
-    private studentClassRepository: Repository<StudentClass>,
-    @InjectRepository(User)
-    private userRepository: Repository<User>,
+    @InjectRepository(User) private userRepository: Repository<User>,
+    @InjectRepository(Class) private classRepository: Repository<Class>,
+    @InjectRepository(ClassTeacher) private classTeacherRepository: Repository<ClassTeacher>,
+    @InjectRepository(StudentClass) private studentClassRepository: Repository<StudentClass>,
   ) {}
 
   private generateClassCode(): string {
@@ -28,14 +34,114 @@ export class ClassService {
   }
 
   async createClass(dto: CreateClassDto, userId: number) {
-    const newClass = this.classRepository.create({
+    const cls = this.classRepository.create({
       name: dto.name,
-      description: dto.description ?? "",
       code: this.generateClassCode(),
-      teacherId: userId,
+      description: dto.description ?? "",
     });
 
-    return this.classRepository.save(newClass);
+    const savedClass = await this.classRepository.save(cls);
+
+    await this.classTeacherRepository.save({
+      teacherId: userId,
+      classId: savedClass.id,
+      role: ClassTeacherRole.OWNER,
+    });
+
+    return savedClass;
+  }
+
+  async getMyClasses(userId: number, role: UserRole) {
+    if (role === UserRole.TEACHER) {
+      return this.classTeacherRepository.find({
+        where: { teacherId: userId },
+        relations: { class: { students: { student: true }, tests: true } },
+      });
+    }
+
+    return this.studentClassRepository.find({
+      where: { studentId: userId },
+      relations: { class: { teachers: { teacher: true }, tests: true } },
+    });
+  }
+
+  async getClassById(id: number) {
+    const cls = await this.classRepository.findOne({
+      where: { id },
+      relations: {
+        tests: true,
+        students: { student: true },
+        teachers: { teacher: true },
+      },
+    });
+    if (!cls) throw new NotFoundException("Class not found");
+    return cls;
+  }
+
+  async updateClass(id: number, dto: UpdateClassDto) {
+    const cls = await this.classRepository.findOne({ where: { id } });
+    if (!cls) throw new NotFoundException("Class not found");
+
+    Object.assign(cls, dto);
+    return this.classRepository.save(cls);
+  }
+
+  async deleteClass(id: number) {
+    const cls = await this.classRepository.findOne({ where: { id } });
+    if (!cls) throw new NotFoundException("Class not found");
+
+    await this.classRepository.delete({ id });
+    return { message: "Class deleted successfully" };
+  }
+
+  async approveStudent(classId: number, dto: ManageStudentDto) {
+    const record = await this.studentClassRepository.findOne({
+      where: { studentId: dto.studentId, classId },
+    });
+    if (!record) throw new NotFoundException("Join request not found");
+    if (record.approved) throw new ConflictException("Student already approved");
+
+    record.approved = true;
+    await this.studentClassRepository.save(record);
+    return { message: "Student approved successfully" };
+  }
+
+  async removeStudent(classId: number, dto: ManageStudentDto) {
+    const studentClass = await this.studentClassRepository.findOne({
+      where: { studentId: dto.studentId, classId },
+    });
+    if (!studentClass) throw new NotFoundException("Student not found in this class");
+
+    await this.studentClassRepository.delete({ studentId: dto.studentId, classId });
+    return { message: "Student removed from class" };
+  }
+
+  async approveAllPending(classId: number) {
+    const result = await this.studentClassRepository
+      .createQueryBuilder()
+      .update(StudentClass)
+      .set({ approved: true })
+      .where("classId = :classId AND approved = :approved", { classId, approved: false })
+      .execute();
+
+    return {
+      message: `${result.affected} student(s) approved successfully`,
+      count: result.affected,
+    };
+  }
+
+  async rejectAllPending(classId: number) {
+    const result = await this.studentClassRepository
+      .createQueryBuilder()
+      .delete()
+      .from(StudentClass)
+      .where("classId = :classId AND approved = :approved", { classId, approved: false })
+      .execute();
+
+    return {
+      message: `${result.affected} student(s) rejected successfully`,
+      count: result.affected,
+    };
   }
 
   async joinClass(dto: JoinClassDto, userId: number) {
@@ -62,143 +168,36 @@ export class ClassService {
     };
   }
 
-  async getMyClasses(userId: number, role: UserRole) {
-    if (role === UserRole.TEACHER) {
-      return this.classRepository.find({
-        where: { teacherId: userId },
-        relations: { students: { student: true }, tests: true },
-      });
-    }
-
-    return this.studentClassRepository.find({
-      where: { studentId: userId },
-      relations: { class: { teacher: true, tests: true } },
-    });
-  }
-
-  async getClassById(id: number) {
-    const cls = await this.classRepository.findOne({
-      where: { id },
-      relations: {
-        tests: true,
-        teacher: true,
-        students: { student: true },
-      },
-    });
-    if (!cls) throw new NotFoundException("Class not found");
-    return cls;
-  }
-
-  async updateClass(id: number, dto: UpdateClassDto, userId: number) {
-    const cls = await this.classRepository.findOne({ where: { id } });
-    if (!cls) throw new NotFoundException("Class not found");
-    if (cls.teacherId !== userId) throw new ForbiddenException("You cannot edit this class");
-
-    Object.assign(cls, dto);
-
-    return this.classRepository.save(cls);
-  }
-
-  async deleteClass(id: number, userId: number) {
-    const cls = await this.classRepository.findOne({ where: { id } });
-    if (!cls) throw new NotFoundException("Class not found");
-    if (cls.teacherId !== userId) throw new ForbiddenException("You cannot delete this class");
-
-    await this.classRepository.delete({ id });
-    return { message: "Class deleted successfully" };
-  }
-
   async leaveClass(classId: number, userId: number) {
     const record = await this.studentClassRepository.findOne({
       where: { studentId: userId, classId },
     });
     if (!record) throw new NotFoundException("You are not in this class");
 
-    await this.studentClassRepository.delete({
-      studentId: userId,
-      classId,
-    });
-
+    await this.studentClassRepository.delete({ studentId: userId, classId });
     return { message: "Left class successfully" };
   }
 
-  async removeStudent(classId: number, dto: ManageStudentDto, userId: number) {
-    const cls = await this.classRepository.findOne({ where: { id: classId } });
-    if (!cls) throw new NotFoundException("Class not found");
-    if (cls.teacherId !== userId) throw new ForbiddenException("Only teacher can remove students");
+  async inviteTeacher(classId: number, dto: InviteTeacherDto) {
+    const classRecord = await this.classRepository.findOne({ where: { id: classId } });
+    if (!classRecord) throw new NotFoundException("Class not found");
 
-    const studentClass = await this.studentClassRepository.findOne({
-      where: { studentId: dto.studentId, classId },
+    const invitedTeacher = await this.userRepository.findOne({
+      where: { email: dto.email, role: UserRole.TEACHER },
     });
+    if (!invitedTeacher) throw new NotFoundException("Teacher with this email does not exist");
 
-    if (!studentClass) throw new NotFoundException("Student not found in this class");
+    const existing = await this.classTeacherRepository.findOne({
+      where: { classId, teacherId: invitedTeacher.id },
+    });
+    if (existing) throw new ConflictException("Teacher is already in this class");
 
-    await this.studentClassRepository.delete({
-      studentId: dto.studentId,
+    await this.classTeacherRepository.insert({
       classId,
+      teacherId: invitedTeacher.id,
+      role: dto.role,
     });
 
-    return { message: "Student removed from class" };
-  }
-
-  async approveStudent(classId: number, dto: ManageStudentDto, userId: number) {
-    const cls = await this.classRepository.findOne({ where: { id: classId } });
-    if (!cls) throw new NotFoundException("Class not found");
-    if (cls.teacherId !== userId) throw new ForbiddenException("Only teacher can approve students");
-
-    const { studentId } = dto;
-
-    const record = await this.studentClassRepository.findOne({
-      where: { studentId, classId },
-    });
-    if (!record) throw new NotFoundException("Join request not found");
-    if (record.approved) throw new ConflictException("Student already approved");
-
-    record.approved = true;
-    await this.studentClassRepository.save(record);
-
-    return { message: "Student approved successfully" };
-  }
-
-  async approveAllPending(classId: number, userId: number) {
-    const cls = await this.classRepository.findOne({ where: { id: classId } });
-    if (!cls) throw new NotFoundException("Class not found");
-    if (cls.teacherId !== userId) throw new ForbiddenException("Only teacher can approve students");
-
-    const result = await this.studentClassRepository
-      .createQueryBuilder()
-      .update(StudentClass)
-      .set({ approved: true })
-      .where("classId = :classId AND approved = :approved", {
-        classId,
-        approved: false,
-      })
-      .execute();
-
-    return {
-      message: `${result.affected} student(s) approved successfully`,
-      count: result.affected,
-    };
-  }
-
-  async rejectAllPending(classId: number, userId: number) {
-    const cls = await this.classRepository.findOne({ where: { id: classId } });
-    if (!cls) throw new NotFoundException("Class not found");
-    if (cls.teacherId !== userId) throw new ForbiddenException("Only teacher can reject students");
-
-    const result = await this.studentClassRepository
-      .createQueryBuilder()
-      .delete()
-      .from(StudentClass)
-      .where("classId = :classId AND approved = :approved", {
-        classId,
-        approved: false,
-      })
-      .execute();
-
-    return {
-      message: `${result.affected} student(s) rejected successfully`,
-      count: result.affected,
-    };
+    return { message: `Teacher (${invitedTeacher.email}) added successfully as ${dto.role}` };
   }
 }

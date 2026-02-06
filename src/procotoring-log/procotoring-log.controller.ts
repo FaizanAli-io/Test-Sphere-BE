@@ -16,24 +16,24 @@ import {
   ApiOperation,
   ApiBearerAuth,
 } from "@nestjs/swagger";
-import { UserRole } from "../typeorm/entities";
 
-import { RolesGuard } from "../common/guards/roles.guard";
-import { Roles } from "../common/decorators/roles.decorator";
+import { UserRole } from "../typeorm/entities";
+import { UserRoleGuard } from "../common/guards/user-role.guard";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
-import { GetUser } from "../common/decorators/get-user.decorator";
-import { CreateProctoringLogDto, CreateProctoringLogBatchDto } from "./procotoring-log.dto";
 import { ProctoringLogService } from "./procotoring-log.service";
+import { GetUser } from "../common/decorators/get-user.decorator";
+import { RequireUserRole } from "../common/decorators/user-roles.decorator";
+import { CreateProctoringLogDto, CreateProctoringLogBatchDto } from "./procotoring-log.dto";
 
 @ApiTags("Proctoring Logs")
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, UserRoleGuard)
 @Controller("proctoring-logs")
 export class ProctoringLogController {
   constructor(private readonly logService: ProctoringLogService) {}
 
   @Post()
-  @Roles(UserRole.STUDENT)
+  @RequireUserRole(UserRole.STUDENT)
   @ApiOperation({ summary: "Add proctoring log (Student only)" })
   @ApiResponse({ status: 201, description: "Proctoring log added" })
   @ApiBody({ type: CreateProctoringLogDto })
@@ -42,7 +42,7 @@ export class ProctoringLogController {
   }
 
   @Post("batch")
-  @Roles(UserRole.STUDENT)
+  @RequireUserRole(UserRole.STUDENT)
   @ApiOperation({ summary: "Add multiple proctoring logs (Student only)" })
   @ApiResponse({ status: 201, description: "Proctoring logs added" })
   @ApiBody({ type: CreateProctoringLogBatchDto })
@@ -51,7 +51,7 @@ export class ProctoringLogController {
   }
 
   @Get(":submissionId")
-  @Roles(UserRole.TEACHER)
+  @RequireUserRole(UserRole.TEACHER)
   @ApiOperation({
     summary: "Retrieve proctoring logs for a submission (Teacher only)",
   })
@@ -65,7 +65,7 @@ export class ProctoringLogController {
   }
 
   @Delete(":submissionId")
-  @Roles(UserRole.TEACHER)
+  @RequireUserRole(UserRole.TEACHER)
   @ApiOperation({
     summary: "Clear all proctoring logs for a submission (Teacher only)",
   })

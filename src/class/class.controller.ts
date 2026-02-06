@@ -1,45 +1,46 @@
 import {
-  Post,
   Get,
-  Body,
-  Param,
+  Post,
   Patch,
   Delete,
+  Body,
+  Param,
   UseGuards,
   Controller,
   ParseIntPipe,
 } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from "@nestjs/swagger";
 
-import { JoinClassDto, CreateClassDto, UpdateClassDto, ManageStudentDto } from "./class.dto";
-import { UserRole } from "../typeorm/entities";
-import { ClassService } from "./class.service";
-import { RolesGuard } from "../common/guards/roles.guard";
-import { Roles } from "../common/decorators/roles.decorator";
-import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
-import { GetUser } from "../common/decorators/get-user.decorator";
+import { UserRole, ClassTeacherRole } from "../typeorm/entities";
+import {
+  JoinClassDto,
+  CreateClassDto,
+  UpdateClassDto,
+  ManageStudentDto,
+  InviteTeacherDto,
+} from "./class.dto";
 
-@ApiTags("Classes")
+import { ClassService } from "./class.service";
+import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { UserRoleGuard } from "../common/guards/user-role.guard";
+import { ClassRoleGuard } from "../common/guards/class-role.guard";
+import { GetUser } from "../common/decorators/get-user.decorator";
+import { RequireUserRole } from "../common/decorators/user-roles.decorator";
+import { RequireClassRole } from "../common/decorators/class-roles.decorator";
+
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@ApiTags("Classes")
 @Controller("classes")
+@UseGuards(JwtAuthGuard, UserRoleGuard, ClassRoleGuard)
 export class ClassController {
   constructor(private readonly classService: ClassService) {}
 
   @Post()
-  @Roles(UserRole.TEACHER)
+  @RequireUserRole(UserRole.TEACHER)
   @ApiOperation({ summary: "Create a new class (Teacher only)" })
   @ApiResponse({ status: 201, description: "Class created successfully" })
   async createClass(@Body() dto: CreateClassDto, @GetUser("id") userId: number) {
     return this.classService.createClass(dto, userId);
-  }
-
-  @Post("join")
-  @Roles(UserRole.STUDENT)
-  @ApiOperation({ summary: "Join a class (Student only)" })
-  @ApiResponse({ status: 200, description: "Successfully joined class" })
-  async joinClass(@Body() dto: JoinClassDto, @GetUser("id") userId: number) {
-    return this.classService.joinClass(dto, userId);
   }
 
   @Get()
@@ -49,84 +50,108 @@ export class ClassController {
     return this.classService.getMyClasses(userId, role);
   }
 
-  @Get(":id")
-  @ApiOperation({ summary: "Get class details by ID" })
+  @Get(":classId")
+  @RequireClassRole(ClassTeacherRole.VIEWER)
+  @ApiOperation({ summary: "Get class details by ID (All roles)" })
   @ApiResponse({ status: 200, description: "Class details returned" })
-  async getClass(@Param("id", ParseIntPipe) id: number) {
-    return this.classService.getClassById(id);
+  async getClass(@Param("classId", ParseIntPipe) classId: number) {
+    return this.classService.getClassById(classId);
   }
 
-  @Patch(":id")
-  @Roles(UserRole.TEACHER)
-  @ApiOperation({ summary: "Update class details (Teacher only)" })
+  @Patch(":classId")
+  @RequireClassRole(ClassTeacherRole.EDITOR)
+  @ApiOperation({ summary: "Update class details (Owner/Editor)" })
   @ApiResponse({ status: 200, description: "Class updated successfully" })
-  async updateClass(
-    @Param("id", ParseIntPipe) id: number,
-    @Body() dto: UpdateClassDto,
-    @GetUser("id") userId: number,
-  ) {
-    return this.classService.updateClass(id, dto, userId);
+  async updateClass(@Param("classId", ParseIntPipe) classId: number, @Body() dto: UpdateClassDto) {
+    return this.classService.updateClass(classId, dto);
   }
 
-  @Delete(":id")
-  @Roles(UserRole.TEACHER)
-  @ApiOperation({ summary: "Delete class (Teacher only)" })
+  @Delete(":classId")
+  @RequireClassRole(ClassTeacherRole.OWNER)
+  @ApiOperation({ summary: "Delete class (Owner only)" })
   @ApiResponse({ status: 200, description: "Class deleted successfully" })
-  async deleteClass(@Param("id", ParseIntPipe) id: number, @GetUser("id") userId: number) {
-    return this.classService.deleteClass(id, userId);
+  async deleteClass(@Param("classId", ParseIntPipe) classId: number) {
+    return this.classService.deleteClass(classId);
   }
 
-  @Post(":id/leave")
-  @Roles(UserRole.STUDENT)
-  @ApiOperation({ summary: "Leave a class (Student only)" })
-  @ApiResponse({ status: 200, description: "Left class successfully" })
-  async leaveClass(@Param("id", ParseIntPipe) classId: number, @GetUser("id") userId: number) {
-    return this.classService.leaveClass(classId, userId);
-  }
-
-  @Post(":id/remove")
-  @Roles(UserRole.TEACHER)
-  @ApiOperation({ summary: "Remove a student from class (Teacher only)" })
-  @ApiResponse({ status: 200, description: "Student removed from class" })
-  async removeStudent(
-    @Param("id", ParseIntPipe) classId: number,
-    @Body() dto: ManageStudentDto,
-    @GetUser("id") userId: number,
-  ) {
-    return this.classService.removeStudent(classId, dto, userId);
-  }
-
-  @Post(":id/approve")
-  @Roles(UserRole.TEACHER)
-  @ApiOperation({ summary: "Approve student join request (Teacher only)" })
+  @Post(":classId/approve")
+  @RequireClassRole(ClassTeacherRole.EDITOR)
+  @ApiOperation({ summary: "Approve student join request (Owner/Editor)" })
   @ApiResponse({ status: 200, description: "Student approved successfully" })
   async approveStudent(
-    @Param("id", ParseIntPipe) classId: number,
+    @Param("classId", ParseIntPipe) classId: number,
     @Body() dto: ManageStudentDto,
-    @GetUser("id") userId: number,
   ) {
-    return this.classService.approveStudent(classId, dto, userId);
+    return this.classService.approveStudent(classId, dto);
   }
 
-  @Post(":id/approve-all")
-  @Roles(UserRole.TEACHER)
-  @ApiOperation({ summary: "Approve all pending join requests (Teacher only)" })
+  @Post(":classId/remove")
+  @RequireClassRole(ClassTeacherRole.EDITOR)
+  @ApiOperation({ summary: "Remove a student from class (Owner/Editor)" })
+  @ApiResponse({ status: 200, description: "Student removed from class" })
+  async removeStudent(
+    @Param("classId", ParseIntPipe) classId: number,
+    @Body() dto: ManageStudentDto,
+  ) {
+    return this.classService.removeStudent(classId, dto);
+  }
+
+  @Post(":classId/approve-all")
+  @RequireClassRole(ClassTeacherRole.EDITOR)
+  @ApiOperation({ summary: "Approve all pending join requests (Owner/Editor)" })
   @ApiResponse({ status: 200, description: "All pending requests approved successfully" })
-  async approveAllPending(
-    @Param("id", ParseIntPipe) classId: number,
-    @GetUser("id") userId: number,
-  ) {
-    return this.classService.approveAllPending(classId, userId);
+  async approveAllPending(@Param("classId", ParseIntPipe) classId: number) {
+    return this.classService.approveAllPending(classId);
   }
 
-  @Post(":id/reject-all")
-  @Roles(UserRole.TEACHER)
-  @ApiOperation({ summary: "Reject all pending join requests (Teacher only)" })
+  @Post(":classId/reject-all")
+  @RequireClassRole(ClassTeacherRole.EDITOR)
+  @ApiOperation({ summary: "Reject all pending join requests (Owner/Editor)" })
   @ApiResponse({ status: 200, description: "All pending requests rejected successfully" })
-  async rejectAllPending(
-    @Param("id", ParseIntPipe) classId: number,
-    @GetUser("id") userId: number,
+  async rejectAllPending(@Param("classId", ParseIntPipe) classId: number) {
+    return this.classService.rejectAllPending(classId);
+  }
+}
+
+@ApiBearerAuth()
+@Controller("classes")
+@ApiTags("Student Classes")
+@UseGuards(JwtAuthGuard, UserRoleGuard, ClassRoleGuard)
+export class StudentClassController {
+  constructor(private readonly classService: ClassService) {}
+
+  @Post("join")
+  @RequireUserRole(UserRole.STUDENT)
+  @ApiOperation({ summary: "Join a class (Student only)" })
+  @ApiResponse({ status: 200, description: "Successfully joined class" })
+  async joinClass(@Body() dto: JoinClassDto, @GetUser("id") userId: number) {
+    return this.classService.joinClass(dto, userId);
+  }
+
+  @Post(":classId/leave")
+  @RequireUserRole(UserRole.STUDENT)
+  @ApiOperation({ summary: "Leave a class (Student only)" })
+  @ApiResponse({ status: 200, description: "Left class successfully" })
+  async leaveClass(@Param("classId", ParseIntPipe) classId: number, @GetUser("id") userId: number) {
+    return this.classService.leaveClass(classId, userId);
+  }
+}
+
+@ApiBearerAuth()
+@Controller("classes")
+@ApiTags("Teacher Classes")
+@UseGuards(JwtAuthGuard, UserRoleGuard, ClassRoleGuard)
+export class TeacherClassController {
+  constructor(private readonly classService: ClassService) {}
+
+  @Post(":classId/invite")
+  @RequireClassRole(ClassTeacherRole.OWNER)
+  @ApiOperation({ summary: "Invite a teacher to a class (Owner only)" })
+  @ApiResponse({ status: 200, description: "Invitation sent successfully" })
+  async inviteTeacher(
+    @Param("classId", ParseIntPipe) classId: number,
+    @Body() dto: InviteTeacherDto,
   ) {
-    return this.classService.rejectAllPending(classId, userId);
+    return this.classService.inviteTeacher(classId, dto);
   }
 }

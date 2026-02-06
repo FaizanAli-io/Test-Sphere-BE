@@ -1,17 +1,14 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
+  Entity,
   ManyToOne,
   OneToMany,
   JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  PrimaryGeneratedColumn,
 } from "typeorm";
-import { Class } from "./class.entity";
-import { Question } from "./question.entity";
-import { QuestionPool } from "./index";
-import { Submission } from "./submission.entity";
+import { Class, Question, Submission, QuestionPool } from ".";
 
 export enum TestStatus {
   ACTIVE = "ACTIVE",

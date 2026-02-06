@@ -1,19 +1,16 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
   Index,
+  Column,
+  Entity,
+  Unique,
   ManyToOne,
   OneToMany,
   JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
-  Unique,
+  PrimaryGeneratedColumn,
 } from "typeorm";
-import { User } from "./user.entity";
-import { Test } from "./test.entity";
-import { Answer } from "./answer.entity";
-import { ProctoringLog } from "./proctoring-log.entity";
+import { User, Test, Answer, ProctoringLog } from ".";
 
 export enum SubmissionStatus {
   IN_PROGRESS = "IN_PROGRESS",

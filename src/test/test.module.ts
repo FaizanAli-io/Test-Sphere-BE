@@ -1,22 +1,22 @@
+import { memoryStorage } from "multer";
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { MulterModule } from "@nestjs/platform-express";
-import { memoryStorage } from "multer";
 
 import { TestService } from "./test.service";
-import { TestController } from "./test.controller";
-import { QuestionPoolController } from "./question-pool.controller";
-import { Test, Question, QuestionPool, Submission, Answer } from "../typeorm/entities";
+import { ClassAccessModule } from "../common/access-models/class-role.access-model";
+import { Test, Answer, Question, Submission, QuestionPool } from "../typeorm/entities";
+import { TestController, QuestionController, QuestionPoolController } from "./test.controller";
+
+const MB = 1024 * 1024;
 
 @Module({
   imports: [
+    MulterModule.register({ storage: memoryStorage(), limits: { fileSize: 10 * MB } }),
     TypeOrmModule.forFeature([Test, Question, QuestionPool, Submission, Answer]),
-    MulterModule.register({
-      storage: memoryStorage(),
-      limits: { fileSize: 10 * 1024 * 1024 }, // 10MB — adjust as needed
-    }),
+    ClassAccessModule,
   ],
-  controllers: [TestController, QuestionPoolController],
+  controllers: [TestController, QuestionController, QuestionPoolController],
   providers: [TestService],
   exports: [TestService],
 })

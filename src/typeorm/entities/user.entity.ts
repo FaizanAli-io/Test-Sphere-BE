@@ -1,16 +1,13 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
-  OneToMany,
+  Entity,
   Unique,
+  OneToMany,
   CreateDateColumn,
   UpdateDateColumn,
+  PrimaryGeneratedColumn,
 } from "typeorm";
-import { Class } from "./class.entity";
-import { StudentClass } from "./student-class.entity";
-import { Submission } from "./submission.entity";
-import { Answer } from "./answer.entity";
+import { Answer, Submission, ClassTeacher, StudentClass } from ".";
 
 export enum UserRole {
   TEACHER = "TEACHER",
@@ -64,15 +61,15 @@ export class User {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  @OneToMany(() => Class, (cls) => cls.teacher)
-  teacherClasses: Class[];
-
-  @OneToMany(() => StudentClass, (sc) => sc.student)
-  studentClasses: StudentClass[];
+  @OneToMany(() => Answer, (answer) => answer.student)
+  answers: Answer[];
 
   @OneToMany(() => Submission, (submission) => submission.user)
   submissions: Submission[];
 
-  @OneToMany(() => Answer, (answer) => answer.student)
-  answers: Answer[];
+  @OneToMany(() => ClassTeacher, (ct) => ct.teacher)
+  classTeachers: ClassTeacher[];
+
+  @OneToMany(() => StudentClass, (sc) => sc.student)
+  studentClasses: StudentClass[];
 }

@@ -1,17 +1,13 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
-  ManyToOne,
-  OneToMany,
-  JoinColumn,
+  Entity,
   Unique,
+  OneToMany,
   CreateDateColumn,
   UpdateDateColumn,
+  PrimaryGeneratedColumn,
 } from "typeorm";
-import { User } from "./user.entity";
-import { Test } from "./test.entity";
-import { StudentClass } from "./student-class.entity";
+import { Test, ClassTeacher, StudentClass } from ".";
 
 @Entity("class")
 @Unique(["code"])
@@ -37,15 +33,12 @@ export class Class {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  @ManyToOne(() => User, (user) => user.teacherClasses, {
-    onDelete: "CASCADE",
-  })
-  @JoinColumn({ name: "teacherId" })
-  teacher: User;
+  @OneToMany(() => Test, (test) => test.class)
+  tests: Test[];
+
+  @OneToMany(() => ClassTeacher, (ct) => ct.class)
+  teachers: ClassTeacher[];
 
   @OneToMany(() => StudentClass, (sc) => sc.class)
   students: StudentClass[];
-
-  @OneToMany(() => Test, (test) => test.class)
-  tests: Test[];
 }

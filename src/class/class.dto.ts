@@ -1,5 +1,15 @@
+import {
+  Min,
+  IsInt,
+  IsEnum,
+  IsEmail,
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  Length,
+} from "class-validator";
+import { ClassTeacherRole } from "../typeorm/entities";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsNotEmpty, IsOptional, IsString, Length, IsInt, Min } from "class-validator";
 
 export class CreateClassDto {
   @ApiProperty({ example: "Mathematics 101", description: "Name of the class" })
@@ -46,4 +56,18 @@ export class ClassIdParamDto {
   @IsInt()
   @Min(1)
   classId: number;
+}
+
+export class InviteTeacherDto {
+  @ApiProperty({ example: "teacher@example.com", description: "Email of the teacher to invite" })
+  @IsEmail()
+  email: string;
+
+  @ApiProperty({
+    example: ClassTeacherRole.EDITOR,
+    description: "Role to assign to the invited teacher",
+    enum: ClassTeacherRole,
+  })
+  @IsEnum(ClassTeacherRole)
+  role: ClassTeacherRole;
 }

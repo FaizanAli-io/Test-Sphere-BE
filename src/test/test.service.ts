@@ -1,9 +1,5 @@
-import {
-  Injectable,
-  NotFoundException,
-  ForbiddenException,
-  BadRequestException,
-} from "@nestjs/common";
+import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
+
 import {
   CreateTestDto,
   UpdateTestDto,
@@ -13,10 +9,11 @@ import {
   CreateQuestionPoolDto,
   UpdateQuestionPoolDto,
 } from "./test.dto";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, DataSource } from "typeorm";
-import { Test, Question, QuestionPool, SubmissionStatus, UserRole } from "../typeorm/entities";
+
 import { TestMode } from "./test-mode.enum";
+import { Repository, DataSource } from "typeorm";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Test, Question, QuestionPool, SubmissionStatus, UserRole } from "../typeorm/entities";
 
 @Injectable()
 export class TestService {
@@ -30,71 +27,13 @@ export class TestService {
     private dataSource: DataSource,
   ) {}
 
-  private async ensureTeacherOwnsClass(userId: number, classId: number) {
-    const classEntity = await this.dataSource.getRepository("Class").findOne({
-      where: { id: classId },
-      select: { teacherId: true },
-    });
-
-    if (!classEntity) throw new NotFoundException("Class not found.");
-    if (classEntity.teacherId !== userId)
-      throw new ForbiddenException("You are not authorized for this class.");
-  }
-
-  private async ensureTeacherOwnsTest(userId: number, testId: number) {
-    const test = await this.testRepository.findOne({
-      where: { id: testId },
-      relations: { class: true },
-      select: { id: true, class: { id: true, teacherId: true } },
-    });
-
-    if (!test) throw new NotFoundException("Test not found.");
-    if (test.class.teacherId !== userId)
-      throw new ForbiddenException("You cannot modify this test.");
-
-    return test;
-  }
-
-  private async ensureTeacherOwnsQuestion(userId: number, questionId: number) {
-    const question = await this.questionRepository.findOne({
-      where: { id: questionId },
-      relations: { test: { class: true } },
-      select: { id: true, test: { id: true, class: { id: true, teacherId: true } } },
-    });
-
-    if (!question) throw new NotFoundException("Question not found.");
-    if (question.test.class.teacherId !== userId)
-      throw new ForbiddenException("You cannot modify this question.");
-
-    return question;
-  }
-
-  private async ensureTeacherOwnsPool(userId: number, poolId: number) {
-    const pool = await this.questionPoolRepository.findOne({
-      where: { id: poolId },
-      relations: { test: { class: true } },
-      select: { id: true, test: { id: true, class: { id: true, teacherId: true } } },
-    });
-
-    if (!pool) throw new NotFoundException("Question pool not found.");
-    if (pool.test.class.teacherId !== userId)
-      throw new ForbiddenException("You cannot modify this question pool.");
-
-    return pool;
-  }
-
   private validateDates(startAt?: string, endAt?: string) {
     if (startAt && endAt && new Date(startAt) >= new Date(endAt)) {
       throw new BadRequestException("End date must be after start date.");
     }
   }
 
-  private parseDate(date?: string) {
-    return date ? new Date(date) : undefined;
-  }
-
-  async createTest(dto: CreateTestDto, userId: number) {
-    await this.ensureTeacherOwnsClass(userId, dto.classId);
+  async createTest(dto: CreateTestDto) {
     this.validateDates(dto.startAt, dto.endAt);
 
     const test = this.testRepository.create({
@@ -129,23 +68,24 @@ export class TestService {
     });
   }
 
-  async updateTest(id: number, dto: UpdateTestDto, userId: number) {
-    await this.ensureTeacherOwnsTest(userId, id);
+  async updateTest(id: number, dto: UpdateTestDto) {
     this.validateDates(dto.startAt, dto.endAt);
 
     const test = await this.testRepository.findOne({ where: { id } });
     if (!test) throw new NotFoundException("Test not found.");
 
+    const parseDate = (date?: string) => (date ? new Date(date) : undefined);
+
     Object.assign(test, {
       ...dto,
-      startAt: this.parseDate(dto.startAt),
-      endAt: this.parseDate(dto.endAt),
+      startAt: parseDate(dto.startAt),
+      endAt: parseDate(dto.endAt),
     });
 
     return this.testRepository.save(test);
   }
 
-  async updateTestConfig(testId: number, dto: UpdateTestConfigDto, userId: number) {
+  async updateTestConfig(testId: number, dto: UpdateTestConfigDto) {
     const test = await this.testRepository.findOne({
       where: { id: testId },
       select: { id: true, classId: true, config: true },
@@ -153,16 +93,12 @@ export class TestService {
 
     if (!test) throw new NotFoundException("Test not found");
 
-    await this.ensureTeacherOwnsClass(userId, test.classId);
-
     test.config = { ...(test.config as Record<string, any>), ...dto };
 
     return this.testRepository.save(test);
   }
 
-  async deleteTest(id: number, userId: number) {
-    await this.ensureTeacherOwnsTest(userId, id);
-
+  async deleteTest(id: number) {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -219,7 +155,7 @@ export class TestService {
     return { message: "Test deleted successfully" };
   }
 
-  async getQuestionsByTestId(testId: number, role: string, mode?: string) {
+  async getQuestionsByTestId(testId: number, role: UserRole, mode?: TestMode) {
     const test = await this.testRepository.findOne({
       where: { id: testId },
       select: { id: true },
@@ -227,15 +163,15 @@ export class TestService {
 
     if (!test) throw new NotFoundException("Test not found.");
 
-    const selectFields = {
+    const selectFields: Partial<Record<keyof Question, true>> = {
       id: true,
       text: true,
       type: true,
       options: true,
-      correctAnswer: true,
       maxMarks: true,
+      correctAnswer: true,
       questionPoolId: true,
-    } as any;
+    };
 
     // Teachers always see all questions
     if (role === UserRole.TEACHER) {
@@ -310,34 +246,23 @@ export class TestService {
     return selected;
   }
 
-  async addQuestions(testId: number, dto: AddQuestionsDto, userId: number) {
-    await this.ensureTeacherOwnsTest(userId, testId);
-
+  async addQuestions(testId: number, dto: AddQuestionsDto) {
     const rows = dto.questions.map((q) => ({ ...q, testId }));
-    await this.questionRepository.insert(rows);
-
-    return { message: "Questions added successfully" };
+    return this.questionRepository.insert(rows);
   }
 
-  async updateQuestion(id: number, dto: UpdateQuestionDto, userId: number) {
-    await this.ensureTeacherOwnsQuestion(userId, id);
-
+  async updateQuestion(id: number, dto: UpdateQuestionDto) {
     const question = await this.questionRepository.findOne({ where: { id } });
     if (!question) throw new NotFoundException("Question not found.");
-
     Object.assign(question, dto);
 
     return this.questionRepository.save(question);
   }
 
-  async removeQuestion(id: number, userId: number) {
-    await this.ensureTeacherOwnsQuestion(userId, id);
-
-    await this.questionRepository.delete({ id });
-    return { message: "Question removed successfully" };
+  async removeQuestion(id: number) {
+    return this.questionRepository.delete({ id });
   }
 
-  // QuestionPool CRUD
   async getQuestionPoolsByTestId(testId: number) {
     return this.questionPoolRepository.find({
       where: { testId },
@@ -351,8 +276,7 @@ export class TestService {
     return pool;
   }
 
-  async createQuestionPool(testId: number, dto: CreateQuestionPoolDto, userId: number) {
-    await this.ensureTeacherOwnsTest(userId, testId);
+  async createQuestionPool(testId: number, dto: CreateQuestionPoolDto) {
     const pool = this.questionPoolRepository.create({
       testId,
       title: dto.title,
@@ -361,22 +285,22 @@ export class TestService {
     return this.questionPoolRepository.save(pool);
   }
 
-  async updateQuestionPool(id: number, dto: UpdateQuestionPoolDto, userId: number) {
-    const pool = await this.ensureTeacherOwnsPool(userId, id);
+  async updateQuestionPool(id: number, dto: UpdateQuestionPoolDto) {
+    const pool = await this.getQuestionPoolById(id);
     Object.assign(pool, dto);
+
     return this.questionPoolRepository.save(pool);
   }
 
-  async deleteQuestionPool(id: number, userId: number) {
-    await this.ensureTeacherOwnsPool(userId, id);
-    await this.questionPoolRepository.delete({ id });
-    return { message: "Question pool removed successfully" };
+  async deleteQuestionPool(id: number) {
+    return this.questionPoolRepository.delete({ id });
   }
 
-  async addQuestionsToPool(poolId: number, questionIds: number[], userId: number) {
+  async addQuestionsToPool(poolId: number, questionIds: number[]) {
+    const pool = await this.getQuestionPoolById(poolId);
+
     if (!questionIds || !questionIds.length)
       throw new BadRequestException("questionIds is required");
-    const pool = await this.ensureTeacherOwnsPool(userId, poolId);
 
     // Only update questions that belong to the same test
     const result = await this.questionRepository
@@ -389,10 +313,11 @@ export class TestService {
     return { message: "Questions added to pool successfully", affected: result.affected || 0 };
   }
 
-  async removeQuestionsFromPool(poolId: number, questionIds: number[], userId: number) {
+  async removeQuestionsFromPool(poolId: number, questionIds: number[]) {
+    await this.getQuestionPoolById(poolId);
+
     if (!questionIds || !questionIds.length)
       throw new BadRequestException("questionIds is required");
-    await this.ensureTeacherOwnsPool(userId, poolId);
 
     const result = await this.questionRepository
       .createQueryBuilder()
@@ -404,9 +329,7 @@ export class TestService {
     return { message: "Questions removed from pool successfully", affected: result.affected || 0 };
   }
 
-  async getStudentsByTestId(testId: number, userId: number) {
-    await this.ensureTeacherOwnsTest(userId, testId);
-
+  async getStudentsByTestId(testId: number) {
     const test = await this.testRepository.findOne({
       where: { id: testId },
       relations: { submissions: { user: true } },
@@ -420,10 +343,9 @@ export class TestService {
       },
     });
 
-    if (test && test.submissions) {
-      test.submissions = test.submissions.filter((s) => s.status === SubmissionStatus.IN_PROGRESS);
-    }
-
-    return test;
+    return {
+      ...test,
+      submissions: test?.submissions?.filter((s) => s.status === SubmissionStatus.IN_PROGRESS),
+    };
   }
 }

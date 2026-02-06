@@ -1,17 +1,15 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
+  Index,
   Column,
+  Entity,
+  Unique,
   ManyToOne,
   JoinColumn,
-  Index,
   CreateDateColumn,
   UpdateDateColumn,
-  Unique,
+  PrimaryGeneratedColumn,
 } from "typeorm";
-import { User } from "./user.entity";
-import { Question } from "./question.entity";
-import { Submission } from "./submission.entity";
+import { User, Question, Submission } from ".";
 
 export enum GradingStatus {
   AUTOMATIC = "AUTOMATIC",

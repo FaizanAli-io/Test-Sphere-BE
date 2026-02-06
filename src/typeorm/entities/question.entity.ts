@@ -1,15 +1,13 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
+  Index,
   Column,
+  Entity,
   ManyToOne,
   OneToMany,
   JoinColumn,
-  Index,
+  PrimaryGeneratedColumn,
 } from "typeorm";
-import { Test } from "./test.entity";
-import { QuestionPool } from "./index";
-import { Answer } from "./answer.entity";
+import { Test, Answer, QuestionPool } from ".";
 
 export enum QuestionType {
   MULTIPLE_CHOICE = "MULTIPLE_CHOICE",

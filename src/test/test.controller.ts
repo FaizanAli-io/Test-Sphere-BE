@@ -3,12 +3,12 @@ import {
   Post,
   Patch,
   Delete,
-  Param,
   Body,
+  Param,
+  Query,
   UseGuards,
   Controller,
   ParseIntPipe,
-  Query,
   ParseEnumPipe,
 } from "@nestjs/common";
 
@@ -18,81 +18,93 @@ import {
   AddQuestionsDto,
   UpdateQuestionDto,
   UpdateTestConfigDto,
+  CreateQuestionPoolDto,
+  UpdateQuestionPoolDto,
+  BulkQuestionPoolUpdateDto,
 } from "./test.dto";
-
-import { TestService } from "./test.service";
-import { UserRole } from "../typeorm/entities";
-import { TestMode } from "./test-mode.enum";
-import { RolesGuard } from "../common/guards/roles.guard";
-import { Roles } from "../common/decorators/roles.decorator";
-import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
-import { GetUser } from "../common/decorators/get-user.decorator";
 
 import { ApiTags, ApiResponse, ApiOperation, ApiBearerAuth, ApiQuery } from "@nestjs/swagger";
 
-@ApiTags("Tests")
+import { TestMode } from "./test-mode.enum";
+import { TestService } from "./test.service";
+import { ClassTeacherRole, UserRole } from "../typeorm/entities";
+
+import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { GetUser } from "../common/decorators/get-user.decorator";
+import { ClassRoleGuard } from "../common/guards/class-role.guard";
+import { RequireClassRole } from "../common/decorators/class-roles.decorator";
+
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@ApiTags("Tests")
 @Controller("tests")
+@UseGuards(JwtAuthGuard, ClassRoleGuard)
 export class TestController {
   constructor(private readonly testService: TestService) {}
 
   @Post()
-  @Roles(UserRole.TEACHER)
-  @ApiOperation({ summary: "Create a new test (Teacher only)" })
+  @RequireClassRole(ClassTeacherRole.EDITOR)
+  @ApiOperation({ summary: "Create a new test (Editor only)" })
   @ApiResponse({ status: 201, description: "Test created successfully" })
-  async createTest(@Body() dto: CreateTestDto, @GetUser("id") userId: number) {
-    return this.testService.createTest(dto, userId);
+  async createTest(@Body() dto: CreateTestDto) {
+    return this.testService.createTest(dto);
   }
 
-  @Get(":id")
+  @Get(":testId")
   @ApiOperation({ summary: "Get a test by ID" })
   @ApiResponse({ status: 200, description: "Returns test details" })
-  async getTestById(@Param("id", ParseIntPipe) id: number) {
-    return this.testService.getTestById(id);
+  async getTestById(@Param("testId", ParseIntPipe) testId: number) {
+    return this.testService.getTestById(testId);
   }
 
   @Get("class/:classId")
   @ApiOperation({ summary: "Get all tests for a class" })
-  @ApiResponse({
-    status: 200,
-    description: "Returns all tests for a given class",
-  })
+  @ApiResponse({ status: 200, description: "Returns all tests for a given class" })
   async getTestsByClassId(@Param("classId", ParseIntPipe) classId: number) {
     return this.testService.getTestsByClassId(classId);
   }
 
-  @Patch(":id")
-  @Roles(UserRole.TEACHER)
-  @ApiOperation({ summary: "Update a test (Teacher only)" })
+  @Patch(":testId")
+  @RequireClassRole(ClassTeacherRole.EDITOR, "test")
+  @ApiOperation({ summary: "Update a test (Editor only)" })
   @ApiResponse({ status: 200, description: "Test updated successfully" })
-  async updateTest(
-    @Param("id", ParseIntPipe) id: number,
-    @Body() dto: UpdateTestDto,
-    @GetUser("id") userId: number,
-  ) {
-    return this.testService.updateTest(id, dto, userId);
+  async updateTest(@Param("testId", ParseIntPipe) testId: number, @Body() dto: UpdateTestDto) {
+    return this.testService.updateTest(testId, dto);
   }
 
-  @Delete(":id")
-  @Roles(UserRole.TEACHER)
-  @ApiOperation({ summary: "Delete a test (Teacher only)" })
-  @ApiResponse({ status: 200, description: "Test deleted successfully" })
-  async deleteTest(@Param("id", ParseIntPipe) id: number, @GetUser("id") userId: number) {
-    return this.testService.deleteTest(id, userId);
-  }
-
-  @Patch(":id/config")
-  @Roles(UserRole.TEACHER)
-  @ApiOperation({ summary: "Update a test configuration (Teacher only)" })
+  @Patch(":testId/config")
+  @RequireClassRole(ClassTeacherRole.EDITOR, "test")
+  @ApiOperation({ summary: "Update a test configuration (Editor only)" })
   @ApiResponse({ status: 200, description: "Configuration updated successfully" })
   async updateTestConfig(
-    @Param("id", ParseIntPipe) id: number,
+    @Param("testId", ParseIntPipe) testId: number,
     @Body() dto: UpdateTestConfigDto,
-    @GetUser("id") userId: number,
   ) {
-    return this.testService.updateTestConfig(id, dto, userId);
+    return this.testService.updateTestConfig(testId, dto);
   }
+
+  @Delete(":testId")
+  @RequireClassRole(ClassTeacherRole.EDITOR, "test")
+  @ApiOperation({ summary: "Delete a test (Editor only)" })
+  @ApiResponse({ status: 200, description: "Test deleted successfully" })
+  async deleteTest(@Param("testId", ParseIntPipe) testId: number) {
+    return this.testService.deleteTest(testId);
+  }
+
+  @Get(":testId/invigilate")
+  @RequireClassRole(ClassTeacherRole.VIEWER, "test")
+  @ApiOperation({ summary: "Get all students giving the test" })
+  @ApiResponse({ status: 200, description: "Students giving the test" })
+  async getStudentsByTest(@Param("testId", ParseIntPipe) testId: number) {
+    return this.testService.getStudentsByTestId(testId);
+  }
+}
+
+@ApiBearerAuth()
+@ApiTags("Questions")
+@Controller("tests")
+@UseGuards(JwtAuthGuard, ClassRoleGuard)
+export class QuestionController {
+  constructor(private readonly testService: TestService) {}
 
   @Get(":testId/questions")
   @ApiOperation({ summary: "Get all questions for a test" })
@@ -107,48 +119,97 @@ export class TestController {
   }
 
   @Post(":testId/questions")
-  @Roles(UserRole.TEACHER)
-  @ApiOperation({ summary: "Add questions to a test (Teacher only)" })
+  @RequireClassRole(ClassTeacherRole.EDITOR, "test")
+  @ApiOperation({ summary: "Add questions to a test (Editor only)" })
   @ApiResponse({ status: 201, description: "Questions added successfully" })
-  async addQuestions(
-    @Param("testId", ParseIntPipe) testId: number,
-    @Body() dto: AddQuestionsDto,
-    @GetUser("id") userId: number,
-  ) {
-    return this.testService.addQuestions(testId, dto, userId);
+  async addQuestions(@Param("testId", ParseIntPipe) testId: number, @Body() dto: AddQuestionsDto) {
+    return this.testService.addQuestions(testId, dto);
   }
 
   @Patch("questions/:questionId")
-  @Roles(UserRole.TEACHER)
-  @ApiOperation({ summary: "Update a question in a test (Teacher only)" })
+  @RequireClassRole(ClassTeacherRole.EDITOR, "question")
+  @ApiOperation({ summary: "Update a question in a test (Editor only)" })
   @ApiResponse({ status: 200, description: "Question updated successfully" })
   async updateQuestion(
     @Param("questionId", ParseIntPipe) questionId: number,
     @Body() dto: UpdateQuestionDto,
-    @GetUser("id") userId: number,
   ) {
-    return this.testService.updateQuestion(questionId, dto, userId);
+    return this.testService.updateQuestion(questionId, dto);
   }
 
   @Delete("questions/:questionId")
-  @Roles(UserRole.TEACHER)
-  @ApiOperation({ summary: "Remove a question from a test (Teacher only)" })
+  @RequireClassRole(ClassTeacherRole.EDITOR, "question")
+  @ApiOperation({ summary: "Remove a question from a test (Editor only)" })
   @ApiResponse({ status: 200, description: "Question deleted successfully" })
-  async removeQuestion(
-    @Param("questionId", ParseIntPipe) questionId: number,
-    @GetUser("id") userId: number,
-  ) {
-    return this.testService.removeQuestion(questionId, userId);
+  async removeQuestion(@Param("questionId", ParseIntPipe) questionId: number) {
+    return this.testService.removeQuestion(questionId);
+  }
+}
+
+@ApiBearerAuth()
+@ApiTags("Question Pools")
+@Controller("tests")
+@UseGuards(JwtAuthGuard, ClassRoleGuard)
+export class QuestionPoolController {
+  constructor(private readonly testService: TestService) {}
+
+  @Get(":testId/pools")
+  @RequireClassRole(ClassTeacherRole.VIEWER, "test")
+  @ApiOperation({ summary: "List question pools for a test" })
+  @ApiResponse({ status: 200, description: "Returns question pools for a test" })
+  async getPoolsByTest(@Param("testId", ParseIntPipe) testId: number) {
+    return this.testService.getQuestionPoolsByTestId(testId);
   }
 
-  @Get(":testId/invigilate")
-  @Roles(UserRole.TEACHER)
-  @ApiOperation({ summary: "Get all students giving the test" })
-  @ApiResponse({ status: 200, description: "Students giving the test" })
-  async getStudentsByTest(
+  @Post(":testId/pools")
+  @RequireClassRole(ClassTeacherRole.EDITOR, "test")
+  @ApiOperation({ summary: "Create a question pool (Editor only)" })
+  @ApiResponse({ status: 201, description: "Question pool created successfully" })
+  async createPool(
     @Param("testId", ParseIntPipe) testId: number,
-    @GetUser("id") userId: number,
+    @Body() dto: CreateQuestionPoolDto,
   ) {
-    return this.testService.getStudentsByTestId(testId, userId);
+    return this.testService.createQuestionPool(testId, dto);
+  }
+
+  @Post("pools/:poolId/questions")
+  @RequireClassRole(ClassTeacherRole.EDITOR, "questionPool")
+  @ApiOperation({ summary: "Bulk add questions to a pool (Editor only)" })
+  @ApiResponse({ status: 200, description: "Questions added to pool successfully" })
+  async addQuestionsToPool(
+    @Param("poolId", ParseIntPipe) poolId: number,
+    @Body() dto: BulkQuestionPoolUpdateDto,
+  ) {
+    return this.testService.addQuestionsToPool(poolId, dto.questionIds);
+  }
+
+  @Delete("pools/:poolId/questions")
+  @RequireClassRole(ClassTeacherRole.EDITOR, "questionPool")
+  @ApiOperation({ summary: "Bulk remove questions from a pool (Editor only)" })
+  @ApiResponse({ status: 200, description: "Questions removed from pool successfully" })
+  async removeQuestionsFromPool(
+    @Param("poolId", ParseIntPipe) poolId: number,
+    @Body() dto: BulkQuestionPoolUpdateDto,
+  ) {
+    return this.testService.removeQuestionsFromPool(poolId, dto.questionIds);
+  }
+
+  @Patch("pools/:poolId")
+  @RequireClassRole(ClassTeacherRole.EDITOR, "questionPool")
+  @ApiOperation({ summary: "Update a question pool (Editor only)" })
+  @ApiResponse({ status: 200, description: "Question pool updated successfully" })
+  async updatePool(
+    @Param("poolId", ParseIntPipe) poolId: number,
+    @Body() dto: UpdateQuestionPoolDto,
+  ) {
+    return this.testService.updateQuestionPool(poolId, dto);
+  }
+
+  @Delete("pools/:poolId")
+  @RequireClassRole(ClassTeacherRole.EDITOR, "questionPool")
+  @ApiOperation({ summary: "Delete a question pool (Editor only)" })
+  @ApiResponse({ status: 200, description: "Question pool deleted successfully" })
+  async deletePool(@Param("poolId", ParseIntPipe) poolId: number) {
+    return this.testService.deleteQuestionPool(poolId);
   }
 }

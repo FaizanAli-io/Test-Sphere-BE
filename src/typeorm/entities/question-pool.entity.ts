@@ -1,16 +1,15 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
+  Index,
   Column,
+  Entity,
   ManyToOne,
   OneToMany,
   JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
-  Index,
+  PrimaryGeneratedColumn,
 } from "typeorm";
-import { Test } from "./test.entity";
-import { Question } from "./question.entity";
+import { Test, Question } from ".";
 
 @Entity("question_pool")
 @Index(["testId"])

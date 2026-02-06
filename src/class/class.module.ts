@@ -1,12 +1,17 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { ClassService } from "./class.service";
-import { ClassController } from "./class.controller";
-import { Class, StudentClass, User } from "../typeorm/entities";
+import { Class, ClassTeacher, StudentClass } from "../typeorm/entities";
+import { ClassAccessModule } from "../common/access-models/class-role.access-model";
+import {
+  ClassController,
+  StudentClassController,
+  TeacherClassController,
+} from "./class.controller";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Class, StudentClass, User])],
-  controllers: [ClassController],
+  imports: [TypeOrmModule.forFeature([Class, ClassTeacher, StudentClass]), ClassAccessModule],
+  controllers: [ClassController, StudentClassController, TeacherClassController],
   providers: [ClassService],
   exports: [ClassService],
 })

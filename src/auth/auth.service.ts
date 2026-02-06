@@ -5,11 +5,6 @@ import {
   BadRequestException,
   UnauthorizedException,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, DataSource } from "typeorm";
-import bcrypt from "bcryptjs";
-import { JwtService } from "@nestjs/jwt";
-import { ConfigService } from "@config/config.service";
 
 import {
   LoginDto,
@@ -19,18 +14,22 @@ import {
   ResetPasswordDto,
   ForgotPasswordDto,
 } from "./auth.dto";
-import { User, UserRole } from "../typeorm/entities";
+
+import bcrypt from "bcryptjs";
+import { Repository } from "typeorm";
+
+import { JwtService } from "@nestjs/jwt";
+import { InjectRepository } from "@nestjs/typeorm";
+
+import { User } from "../typeorm/entities";
 import { EmailService } from "../email/email.service";
 
 @Injectable()
 export class AuthService {
   constructor(
-    @InjectRepository(User)
-    private userRepository: Repository<User>,
-    private dataSource: DataSource,
-    private jwtService: JwtService,
+    @InjectRepository(User) private userRepository: Repository<User>,
     private emailService: EmailService,
-    private configService: ConfigService,
+    private jwtService: JwtService,
   ) {}
 
   OTP_LIFETIME = 10 * 60 * 1000;
@@ -116,12 +115,12 @@ export class AuthService {
     if (dto.firebaseId) {
       const user = this.userRepository.create({
         verified: true,
+        cnic: dto.cnic,
         name: dto.name,
         role: dto.role,
         email: dto.email,
         firebaseId: dto.firebaseId,
         profileImage: dto.profileImage,
-        cnic: dto.cnic,
       });
 
       const savedUser = await this.userRepository.save(user);
@@ -139,12 +138,12 @@ export class AuthService {
     const otp = this.generateOtp();
 
     const user = this.userRepository.create({
+      cnic: dto.cnic,
       name: dto.name,
       role: dto.role,
       email: dto.email,
       password: hashedPassword,
       profileImage: dto.profileImage,
-      cnic: dto.cnic,
       verified: false,
       otp,
       otpExpiry: new Date(Date.now() + this.OTP_LIFETIME),
@@ -293,13 +292,13 @@ export class AuthService {
       where: { id: userId },
       select: {
         id: true,
+        cnic: true,
         name: true,
         role: true,
         email: true,
         verified: true,
         createdAt: true,
         profileImage: true,
-        cnic: true,
       },
     });
 
@@ -313,19 +312,31 @@ export class AuthService {
 
     if (dto.name !== undefined) user.name = dto.name;
     if (dto.profileImage !== undefined) user.profileImage = dto.profileImage;
-    if (dto.cnic !== undefined) user.cnic = dto.cnic;
+
+    if (dto.cnic !== undefined && dto.cnic !== user.cnic) {
+      const existing = await this.userRepository.findOne({
+        where: { cnic: dto.cnic },
+        select: { id: true },
+      });
+
+      if (existing && existing.id !== user.id) {
+        throw new ConflictException("CNIC is already registered.");
+      }
+
+      user.cnic = dto.cnic;
+    }
 
     const updatedUser = await this.userRepository.save(user);
 
     return {
       id: updatedUser.id,
+      cnic: updatedUser.cnic,
       name: updatedUser.name,
       role: updatedUser.role,
       email: updatedUser.email,
       verified: updatedUser.verified,
       createdAt: updatedUser.createdAt,
       profileImage: updatedUser.profileImage,
-      cnic: updatedUser.cnic,
     };
   }
 }

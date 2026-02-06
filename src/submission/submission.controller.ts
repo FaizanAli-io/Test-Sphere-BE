@@ -17,22 +17,23 @@ import {
   GradeSubmissionDto,
   UpdateSubmissionStatusDto,
 } from "./submission.dto";
+
 import { UserRole } from "../typeorm/entities";
 import { SubmissionService } from "./submission.service";
-import { RolesGuard } from "../common/guards/roles.guard";
-import { Roles } from "../common/decorators/roles.decorator";
+import { UserRoleGuard } from "../common/guards/user-role.guard";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { GetUser } from "../common/decorators/get-user.decorator";
+import { RequireUserRole } from "../common/decorators/user-roles.decorator";
 
 @ApiBearerAuth()
 @ApiTags("Submissions")
 @Controller("submissions")
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, UserRoleGuard)
 export class SubmissionController {
   constructor(private readonly submissionService: SubmissionService) {}
 
   @Post("start")
-  @Roles(UserRole.STUDENT)
+  @RequireUserRole(UserRole.STUDENT)
   @ApiOperation({ summary: "Start a test (Student only)" })
   @ApiResponse({ status: 201, description: "Submission started successfully" })
   async startTest(@Body() dto: StartSubmissionDto, @GetUser("id") userId: number) {
@@ -40,7 +41,7 @@ export class SubmissionController {
   }
 
   @Post("submit")
-  @Roles(UserRole.STUDENT)
+  @RequireUserRole(UserRole.STUDENT)
   @ApiOperation({ summary: "Submit test answers (Student only)" })
   @ApiResponse({ status: 200, description: "Test submitted successfully" })
   async submitTest(@Body() dto: SubmitTestDto, @GetUser("id") userId: number) {
@@ -48,7 +49,7 @@ export class SubmissionController {
   }
 
   @Post(":id/grade")
-  @Roles(UserRole.TEACHER)
+  @RequireUserRole(UserRole.TEACHER)
   @ApiOperation({ summary: "Grade a student submission (Teacher only)" })
   @ApiResponse({ status: 200, description: "Submission graded successfully" })
   async gradeSubmission(
@@ -60,7 +61,7 @@ export class SubmissionController {
   }
 
   @Patch(":id/status")
-  @Roles(UserRole.TEACHER)
+  @RequireUserRole(UserRole.TEACHER)
   @ApiOperation({ summary: "Update submission status (Teacher only)" })
   @ApiResponse({ status: 200, description: "Submission status updated" })
   async updateStatus(
@@ -72,7 +73,7 @@ export class SubmissionController {
   }
 
   @Get("test/:id")
-  @Roles(UserRole.TEACHER)
+  @RequireUserRole(UserRole.TEACHER)
   @ApiOperation({ summary: "Get all submissions for a test (Teacher only)" })
   @ApiResponse({ status: 200, description: "List of submissions returned" })
   async getSubmissionsForTest(
@@ -83,7 +84,7 @@ export class SubmissionController {
   }
 
   @Get("student")
-  @Roles(UserRole.STUDENT)
+  @RequireUserRole(UserRole.STUDENT)
   @ApiOperation({ summary: "Get all submissions for a student (Student only)" })
   @ApiResponse({
     status: 200,
@@ -94,7 +95,7 @@ export class SubmissionController {
   }
 
   @Get(":id")
-  @Roles(UserRole.TEACHER)
+  @RequireUserRole(UserRole.TEACHER)
   @ApiOperation({ summary: "Get a single submission by ID (Teacher only)" })
   @ApiResponse({ status: 200, description: "Submission details returned" })
   async getSubmission(
@@ -105,7 +106,7 @@ export class SubmissionController {
   }
 
   @Delete(":id")
-  @Roles(UserRole.TEACHER)
+  @RequireUserRole(UserRole.TEACHER)
   @ApiOperation({ summary: "Delete a submission (Teacher only)" })
   @ApiResponse({ status: 200, description: "Submission deleted successfully" })
   async deleteSubmission(

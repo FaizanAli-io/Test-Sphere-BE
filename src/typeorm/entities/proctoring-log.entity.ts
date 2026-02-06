@@ -1,5 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, Index, ManyToOne, JoinColumn } from "typeorm";
-import { Submission } from "./submission.entity";
+import { Index, Column, Entity, ManyToOne, JoinColumn, PrimaryGeneratedColumn } from "typeorm";
+import { Submission } from ".";
 
 export enum LogType {
   SCREENSHOT = "SCREENSHOT",

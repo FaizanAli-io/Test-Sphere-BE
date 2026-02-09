@@ -9,6 +9,7 @@ import {
   Controller,
   ParseIntPipe,
 } from "@nestjs/common";
+
 import { ApiTags, ApiResponse, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
 
 import {
@@ -18,17 +19,21 @@ import {
   UpdateSubmissionStatusDto,
 } from "./submission.dto";
 
-import { UserRole } from "../typeorm/entities";
+import { ClassTeacherRole, UserRole } from "../typeorm/entities";
 import { SubmissionService } from "./submission.service";
-import { UserRoleGuard } from "../common/guards/user-role.guard";
+
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { UserRoleGuard } from "../common/guards/user-role.guard";
+import { ClassRoleGuard } from "../common/guards/class-role.guard";
+
 import { GetUser } from "../common/decorators/get-user.decorator";
 import { RequireUserRole } from "../common/decorators/user-roles.decorator";
+import { RequireClassRole } from "../common/decorators/class-roles.decorator";
 
 @ApiBearerAuth()
 @ApiTags("Submissions")
 @Controller("submissions")
-@UseGuards(JwtAuthGuard, UserRoleGuard)
+@UseGuards(JwtAuthGuard, UserRoleGuard, ClassRoleGuard)
 export class SubmissionController {
   constructor(private readonly submissionService: SubmissionService) {}
 
@@ -48,39 +53,34 @@ export class SubmissionController {
     return this.submissionService.submitTest(userId, dto);
   }
 
-  @Post(":id/grade")
-  @RequireUserRole(UserRole.TEACHER)
+  @Post(":submissionId/grade")
+  @RequireClassRole(ClassTeacherRole.OWNER, "submission")
   @ApiOperation({ summary: "Grade a student submission (Teacher only)" })
   @ApiResponse({ status: 200, description: "Submission graded successfully" })
   async gradeSubmission(
-    @Param("id", ParseIntPipe) submissionId: number,
+    @Param("submissionId", ParseIntPipe) submissionId: number,
     @Body() dto: GradeSubmissionDto,
-    @GetUser("id") teacherId: number,
   ) {
-    return this.submissionService.gradeSubmission(teacherId, submissionId, dto);
+    return this.submissionService.gradeSubmission(submissionId, dto);
   }
 
-  @Patch(":id/status")
-  @RequireUserRole(UserRole.TEACHER)
+  @Patch(":submissionId/status")
+  @RequireClassRole(ClassTeacherRole.OWNER, "submission")
   @ApiOperation({ summary: "Update submission status (Teacher only)" })
   @ApiResponse({ status: 200, description: "Submission status updated" })
   async updateStatus(
-    @Param("id", ParseIntPipe) submissionId: number,
+    @Param("submissionId", ParseIntPipe) submissionId: number,
     @Body() dto: UpdateSubmissionStatusDto,
-    @GetUser("id") teacherId: number,
   ) {
-    return this.submissionService.updateSubmissionStatus(teacherId, submissionId, dto.status);
+    return this.submissionService.updateSubmissionStatus(submissionId, dto.status);
   }
 
-  @Get("test/:id")
-  @RequireUserRole(UserRole.TEACHER)
+  @Get("test/:testId")
+  @RequireClassRole(ClassTeacherRole.VIEWER, "test")
   @ApiOperation({ summary: "Get all submissions for a test (Teacher only)" })
   @ApiResponse({ status: 200, description: "List of submissions returned" })
-  async getSubmissionsForTest(
-    @Param("id", ParseIntPipe) testId: number,
-    @GetUser("id") teacherId: number,
-  ) {
-    return this.submissionService.getSubmissionsForTest(teacherId, testId);
+  async getSubmissionsForTest(@Param("testId", ParseIntPipe) testId: number) {
+    return this.submissionService.getSubmissionsForTest(testId);
   }
 
   @Get("student")
@@ -94,25 +94,19 @@ export class SubmissionController {
     return this.submissionService.getSubmissionsByStudent(userId);
   }
 
-  @Get(":id")
-  @RequireUserRole(UserRole.TEACHER)
+  @Get(":submissionId")
+  @RequireClassRole(ClassTeacherRole.VIEWER, "submission")
   @ApiOperation({ summary: "Get a single submission by ID (Teacher only)" })
   @ApiResponse({ status: 200, description: "Submission details returned" })
-  async getSubmission(
-    @Param("id", ParseIntPipe) submissionId: number,
-    @GetUser("id") teacherId: number,
-  ) {
-    return this.submissionService.getSubmission(teacherId, submissionId);
+  async getSubmission(@Param("submissionId", ParseIntPipe) submissionId: number) {
+    return this.submissionService.getSubmission(submissionId);
   }
 
-  @Delete(":id")
-  @RequireUserRole(UserRole.TEACHER)
+  @Delete(":submissionId")
+  @RequireClassRole(ClassTeacherRole.OWNER, "submission")
   @ApiOperation({ summary: "Delete a submission (Teacher only)" })
   @ApiResponse({ status: 200, description: "Submission deleted successfully" })
-  async deleteSubmission(
-    @Param("id", ParseIntPipe) submissionId: number,
-    @GetUser("id") teacherId: number,
-  ) {
-    return this.submissionService.deleteSubmission(teacherId, submissionId);
+  async deleteSubmission(@Param("submissionId", ParseIntPipe) submissionId: number) {
+    return this.submissionService.deleteSubmission(submissionId);
   }
 }

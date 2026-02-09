@@ -27,7 +27,7 @@ import { ApiTags, ApiResponse, ApiOperation, ApiBearerAuth, ApiQuery } from "@ne
 
 import { TestMode } from "./test-mode.enum";
 import { TestService } from "./test.service";
-import { ClassTeacherRole, UserRole } from "../typeorm/entities";
+import { UserRole, ClassTeacherRole } from "../typeorm/entities";
 
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
 import { GetUser } from "../common/decorators/get-user.decorator";

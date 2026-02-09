@@ -13,7 +13,15 @@ import {
 import { TestMode } from "./test-mode.enum";
 import { Repository, DataSource } from "typeorm";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Test, Question, QuestionPool, SubmissionStatus, UserRole } from "../typeorm/entities";
+import {
+  Test,
+  Answer,
+  Question,
+  Submission,
+  QuestionPool,
+  SubmissionStatus,
+  UserRole,
+} from "../typeorm/entities";
 
 @Injectable()
 export class TestService {
@@ -99,59 +107,7 @@ export class TestService {
   }
 
   async deleteTest(id: number) {
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
-    try {
-      // Delete answers from all questions in this test
-      await queryRunner.manager
-        .createQueryBuilder()
-        .delete()
-        .from("Answer")
-        .where("questionId IN (SELECT id FROM Question WHERE testId = :testId)", { testId: id })
-        .execute();
-
-      // Delete questions
-      await queryRunner.manager
-        .createQueryBuilder()
-        .delete()
-        .from("Question")
-        .where("testId = :testId", { testId: id })
-        .execute();
-
-      // Delete submissions
-      await queryRunner.manager
-        .createQueryBuilder()
-        .delete()
-        .from("Submission")
-        .where("testId = :testId", { testId: id })
-        .execute();
-
-      // Delete question pools
-      await queryRunner.manager
-        .createQueryBuilder()
-        .delete()
-        .from("QuestionPool")
-        .where("testId = :testId", { testId: id })
-        .execute();
-
-      // Delete test
-      await queryRunner.manager
-        .createQueryBuilder()
-        .delete()
-        .from("Test")
-        .where("id = :id", { id })
-        .execute();
-
-      await queryRunner.commitTransaction();
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      throw error;
-    } finally {
-      await queryRunner.release();
-    }
-
+    await this.dataSource.manager.delete(Test, { id });
     return { message: "Test deleted successfully" };
   }
 

@@ -1,13 +1,4 @@
-import {
-  Min,
-  IsInt,
-  IsEnum,
-  IsEmail,
-  IsString,
-  IsNotEmpty,
-  IsOptional,
-  Length,
-} from "class-validator";
+import { Min, IsInt, IsEnum, IsString, IsNotEmpty, IsOptional, Length } from "class-validator";
 import { ClassTeacherRole } from "../typeorm/entities";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
@@ -36,14 +27,6 @@ export class UpdateClassDto {
   description?: string;
 }
 
-export class JoinClassDto {
-  @ApiProperty({ example: "ABC123", description: "Class code to join" })
-  @IsString()
-  @IsNotEmpty()
-  @Length(3, 10)
-  code: string;
-}
-
 export class ManageStudentDto {
   @ApiProperty({ example: 2, description: "ID of student to manage" })
   @IsInt()
@@ -51,23 +34,13 @@ export class ManageStudentDto {
   studentId: number;
 }
 
-export class ClassIdParamDto {
-  @ApiProperty({ example: 1, description: "ID of the class" })
-  @IsInt()
-  @Min(1)
-  classId: number;
-}
-
-export class InviteTeacherDto {
-  @ApiProperty({ example: "teacher@example.com", description: "Email of the teacher to invite" })
-  @IsEmail()
-  email: string;
-
+export class TeacherRoleDto {
   @ApiProperty({
-    example: ClassTeacherRole.EDITOR,
-    description: "Role to assign to the invited teacher",
     enum: ClassTeacherRole,
+    example: ClassTeacherRole.EDITOR,
+    description: "The role to assign to the teacher",
   })
+  @IsNotEmpty()
   @IsEnum(ClassTeacherRole)
   role: ClassTeacherRole;
 }

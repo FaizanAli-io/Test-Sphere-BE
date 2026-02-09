@@ -12,6 +12,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import {
   Test,
   Question,
+  Submission,
   QuestionPool,
   ClassTeacher,
   UserRole,
@@ -25,7 +26,7 @@ const ROLE_PRIORITY: Record<ClassTeacherRole, number> = {
   [ClassTeacherRole.VIEWER]: 1,
 };
 
-type entityType = Test | Question | QuestionPool;
+type entityType = Test | Question | Submission | QuestionPool;
 
 const CLASS_ID_SELECT = {
   test: {
@@ -37,6 +38,11 @@ const CLASS_ID_SELECT = {
     relations: { test: { class: true } },
     select: { test: { class: { id: true } } },
     extractClassId: (entity: entityType) => (entity as Question).test.class.id,
+  },
+  submission: {
+    relations: { test: { class: true } },
+    select: { test: { class: { id: true } } },
+    extractClassId: (entity: entityType) => (entity as Submission).test.class.id,
   },
   questionPool: {
     relations: { test: { class: true } },
@@ -53,6 +59,8 @@ export class ClassRoleGuard implements CanActivate {
     private testRepository: Repository<Test>,
     @InjectRepository(Question)
     private questionRepository: Repository<Question>,
+    @InjectRepository(Submission)
+    private submissionRepository: Repository<Submission>,
     @InjectRepository(QuestionPool)
     private poolRepository: Repository<QuestionPool>,
     @InjectRepository(ClassTeacher)
@@ -84,12 +92,14 @@ export class ClassRoleGuard implements CanActivate {
       const repoMap = {
         test: this.testRepository,
         question: this.questionRepository,
+        submission: this.submissionRepository,
         questionPool: this.poolRepository,
       };
 
       const idParamMap = {
         test: request.params?.testId,
         question: request.params?.questionId,
+        submission: request.params?.submissionId,
         questionPool: request.params?.poolId,
       };
 
@@ -107,7 +117,7 @@ export class ClassRoleGuard implements CanActivate {
     }
 
     const record = await this.classTeacherRepository.findOne({
-      where: { classId, teacherId: user.sub },
+      where: { classId, teacherId: user.id },
       select: { role: true },
     });
 

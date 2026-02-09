@@ -8,6 +8,7 @@ import {
   Controller,
   ParseIntPipe,
 } from "@nestjs/common";
+
 import {
   ApiBody,
   ApiTags,
@@ -17,18 +18,22 @@ import {
   ApiBearerAuth,
 } from "@nestjs/swagger";
 
-import { UserRole } from "../typeorm/entities";
-import { UserRoleGuard } from "../common/guards/user-role.guard";
-import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { UserRole, ClassTeacherRole } from "../typeorm/entities";
 import { ProctoringLogService } from "./procotoring-log.service";
-import { GetUser } from "../common/decorators/get-user.decorator";
-import { RequireUserRole } from "../common/decorators/user-roles.decorator";
 import { CreateProctoringLogDto, CreateProctoringLogBatchDto } from "./procotoring-log.dto";
 
-@ApiTags("Proctoring Logs")
+import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
+import { UserRoleGuard } from "../common/guards/user-role.guard";
+import { ClassRoleGuard } from "../common/guards/class-role.guard";
+
+import { GetUser } from "../common/decorators/get-user.decorator";
+import { RequireUserRole } from "../common/decorators/user-roles.decorator";
+import { RequireClassRole } from "../common/decorators/class-roles.decorator";
+
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, UserRoleGuard)
+@ApiTags("Proctoring Logs")
 @Controller("proctoring-logs")
+@UseGuards(JwtAuthGuard, UserRoleGuard, ClassRoleGuard)
 export class ProctoringLogController {
   constructor(private readonly logService: ProctoringLogService) {}
 
@@ -51,33 +56,27 @@ export class ProctoringLogController {
   }
 
   @Get(":submissionId")
-  @RequireUserRole(UserRole.TEACHER)
+  @RequireClassRole(ClassTeacherRole.VIEWER, "submission")
   @ApiOperation({
-    summary: "Retrieve proctoring logs for a submission (Teacher only)",
+    summary: "Retrieve proctoring logs for a submission (Viewer only)",
   })
   @ApiResponse({ status: 200, description: "Logs retrieved successfully" })
   @ApiParam({ name: "submissionId", type: Number })
-  async getLogs(
-    @Param("submissionId", ParseIntPipe) submissionId: number,
-    @GetUser("id") teacherId: number,
-  ) {
-    return this.logService.getLogs(submissionId, teacherId);
+  async getLogs(@Param("submissionId", ParseIntPipe) submissionId: number) {
+    return this.logService.getLogs(submissionId);
   }
 
   @Delete(":submissionId")
-  @RequireUserRole(UserRole.TEACHER)
+  @RequireClassRole(ClassTeacherRole.OWNER, "submission")
   @ApiOperation({
-    summary: "Clear all proctoring logs for a submission (Teacher only)",
+    summary: "Clear all proctoring logs for a submission (Owner only)",
   })
   @ApiResponse({
     status: 200,
     description: "Proctoring logs cleared successfully",
   })
   @ApiParam({ name: "submissionId", type: Number })
-  async clearLogs(
-    @Param("submissionId", ParseIntPipe) submissionId: number,
-    @GetUser("id") teacherId: number,
-  ) {
-    return this.logService.clearLogsForSubmission(submissionId, teacherId);
+  async clearLogs(@Param("submissionId", ParseIntPipe) submissionId: number) {
+    return this.logService.clearLogsForSubmission(submissionId);
   }
 }

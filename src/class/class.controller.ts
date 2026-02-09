@@ -12,13 +12,7 @@ import {
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from "@nestjs/swagger";
 
 import { UserRole, ClassTeacherRole } from "../typeorm/entities";
-import {
-  JoinClassDto,
-  CreateClassDto,
-  UpdateClassDto,
-  ManageStudentDto,
-  InviteTeacherDto,
-} from "./class.dto";
+import { CreateClassDto, UpdateClassDto, ManageStudentDto, TeacherRoleDto } from "./class.dto";
 
 import { ClassService } from "./class.service";
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
@@ -120,12 +114,12 @@ export class ClassController {
 export class StudentClassController {
   constructor(private readonly classService: ClassService) {}
 
-  @Post("join")
+  @Post(":classCode/join")
   @RequireUserRole(UserRole.STUDENT)
   @ApiOperation({ summary: "Join a class (Student only)" })
   @ApiResponse({ status: 200, description: "Successfully joined class" })
-  async joinClass(@Body() dto: JoinClassDto, @GetUser("id") userId: number) {
-    return this.classService.joinClass(dto, userId);
+  async joinClass(@Param("classCode") code: string, @GetUser("id") userId: number) {
+    return this.classService.joinClass(code, userId);
   }
 
   @Post(":classId/leave")
@@ -144,14 +138,43 @@ export class StudentClassController {
 export class TeacherClassController {
   constructor(private readonly classService: ClassService) {}
 
-  @Post(":classId/invite")
+  @Get(":classId/inviteable-teachers")
   @RequireClassRole(ClassTeacherRole.OWNER)
-  @ApiOperation({ summary: "Invite a teacher to a class (Owner only)" })
-  @ApiResponse({ status: 200, description: "Invitation sent successfully" })
+  @ApiOperation({ summary: "Get inviteable teachers for a class (Owner only)" })
+  @ApiResponse({ status: 200, description: "Inviteable teachers returned successfully" })
+  async getInviteableTeachers(@Param("classId", ParseIntPipe) classId: number) {
+    return this.classService.getInviteableTeachers(classId);
+  }
+
+  @Post(":classId/teachers/:teacherId")
+  @RequireClassRole(ClassTeacherRole.OWNER)
+  @ApiOperation({ summary: "Add a teacher to a class with a specific role" })
   async inviteTeacher(
     @Param("classId", ParseIntPipe) classId: number,
-    @Body() dto: InviteTeacherDto,
+    @Param("teacherId", ParseIntPipe) teacherId: number,
+    @Body() dto: TeacherRoleDto,
   ) {
-    return this.classService.inviteTeacher(classId, dto);
+    return this.classService.inviteTeacher(classId, teacherId, dto.role);
+  }
+
+  @Patch(":classId/teachers/:teacherId")
+  @RequireClassRole(ClassTeacherRole.OWNER)
+  @ApiOperation({ summary: "Update a teacher's role in a class" })
+  async updateTeacherRole(
+    @Param("classId", ParseIntPipe) classId: number,
+    @Param("teacherId", ParseIntPipe) teacherId: number,
+    @Body() dto: TeacherRoleDto,
+  ) {
+    return this.classService.updateTeacher(classId, teacherId, dto.role);
+  }
+
+  @Delete(":classId/teachers/:teacherId")
+  @RequireClassRole(ClassTeacherRole.OWNER)
+  @ApiOperation({ summary: "Remove a teacher from a class" })
+  async removeTeacher(
+    @Param("classId", ParseIntPipe) classId: number,
+    @Param("teacherId", ParseIntPipe) teacherId: number,
+  ) {
+    return this.classService.removeTeacher(classId, teacherId);
   }
 }

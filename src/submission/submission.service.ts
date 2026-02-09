@@ -24,32 +24,17 @@ import { ProctoringLogService } from "../procotoring-log/procotoring-log.service
 @Injectable()
 export class SubmissionService {
   constructor(
-    @InjectRepository(Submission)
-    private submissionRepository: Repository<Submission>,
-    @InjectRepository(Test)
-    private testRepository: Repository<Test>,
-    @InjectRepository(Question)
-    private questionRepository: Repository<Question>,
-    @InjectRepository(Answer)
-    private answerRepository: Repository<Answer>,
-    @InjectRepository(User)
-    private userRepository: Repository<User>,
     private dataSource: DataSource,
     private proctoringLogService: ProctoringLogService,
+    @InjectRepository(Test)
+    private testRepository: Repository<Test>,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
+    @InjectRepository(Question)
+    private questionRepository: Repository<Question>,
+    @InjectRepository(Submission)
+    private submissionRepository: Repository<Submission>,
   ) {}
-
-  private async ensureTeacherOwnsSubmission(teacherId: number, submissionId: number) {
-    const submission = await this.submissionRepository.findOne({
-      where: { id: submissionId },
-      relations: { test: { class: true } },
-    });
-
-    if (!submission) throw new NotFoundException("Submission not found");
-    if (submission.test.class.teacherId !== teacherId)
-      throw new ForbiddenException("Not authorized");
-
-    return submission;
-  }
 
   async startTest(userId: number, dto: StartSubmissionDto) {
     const test = await this.testRepository.findOne({
@@ -156,9 +141,7 @@ export class SubmissionService {
     return this.getSubmissionWithDetails(submission.id);
   }
 
-  async gradeSubmission(teacherId: number, submissionId: number, dto: GradeSubmissionDto) {
-    await this.ensureTeacherOwnsSubmission(teacherId, submissionId);
-
+  async gradeSubmission(submissionId: number, dto: GradeSubmissionDto) {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -183,9 +166,7 @@ export class SubmissionService {
     return this.getSubmissionWithDetails(submissionId);
   }
 
-  async updateSubmissionStatus(teacherId: number, submissionId: number, status: SubmissionStatus) {
-    await this.ensureTeacherOwnsSubmission(teacherId, submissionId);
-
+  async updateSubmissionStatus(submissionId: number, status: SubmissionStatus) {
     const submission = await this.submissionRepository.findOne({ where: { id: submissionId } });
     if (!submission) throw new NotFoundException("Submission not found");
 
@@ -197,22 +178,20 @@ export class SubmissionService {
     return this.getSubmissionWithDetails(submissionId);
   }
 
-  async getSubmissionsForTest(teacherId: number, testId: number) {
+  async getSubmissionsForTest(testId: number) {
     const test = await this.testRepository.findOne({
       where: { id: testId },
       relations: { class: true },
-      select: { class: { teacherId: true } },
     });
 
     if (!test) throw new NotFoundException("Test not found");
-    if (test.class.teacherId !== teacherId) throw new ForbiddenException("Not authorized");
 
     return this.submissionRepository.find({
       where: { testId },
       relations: {
-        answers: { question: true },
         user: true,
         test: { class: true },
+        answers: { question: true },
       },
       order: { submittedAt: "ASC" },
     });
@@ -235,14 +214,12 @@ export class SubmissionService {
     });
   }
 
-  async getSubmission(teacherId: number, submissionId: number) {
-    await this.ensureTeacherOwnsSubmission(teacherId, submissionId);
+  async getSubmission(submissionId: number) {
     return this.getSubmissionWithDetails(submissionId);
   }
 
-  async deleteSubmission(teacherId: number, submissionId: number) {
-    await this.ensureTeacherOwnsSubmission(teacherId, submissionId);
-    await this.proctoringLogService.clearLogsForSubmission(submissionId, teacherId);
+  async deleteSubmission(submissionId: number) {
+    await this.proctoringLogService.clearLogsForSubmission(submissionId);
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();

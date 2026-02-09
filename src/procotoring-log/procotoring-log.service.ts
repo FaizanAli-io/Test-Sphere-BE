@@ -8,33 +8,12 @@ import { CreateProctoringLogDto } from "./procotoring-log.dto";
 @Injectable()
 export class ProctoringLogService {
   constructor(
-    @InjectRepository(ProctoringLog)
-    private proctoringLogRepository: Repository<ProctoringLog>,
+    private uploadService: UploadService,
     @InjectRepository(Submission)
     private submissionRepository: Repository<Submission>,
-    private uploadService: UploadService,
+    @InjectRepository(ProctoringLog)
+    private proctoringLogRepository: Repository<ProctoringLog>,
   ) {}
-
-  private async verifyTeacherOwnership(submissionId: number, teacherId: number) {
-    const submission = await this.submissionRepository.findOne({
-      where: { id: submissionId },
-      relations: ["test", "test.class"],
-    });
-
-    if (!submission) {
-      throw new BadRequestException("Submission not found");
-    }
-
-    if (!submission.test || !submission.test.class) {
-      throw new BadRequestException("Invalid test or class association");
-    }
-
-    if (submission.test.class.teacherId !== teacherId) {
-      throw new ForbiddenException("You do not own this class or test");
-    }
-
-    return submission;
-  }
 
   private async verifyStudentOwnership(submissionId: number, studentId: number) {
     const submission = await this.submissionRepository.findOne({
@@ -160,9 +139,7 @@ export class ProctoringLogService {
     return results;
   }
 
-  async getLogs(submissionId: number, teacherId: number) {
-    await this.verifyTeacherOwnership(submissionId, teacherId);
-
+  async getLogs(submissionId: number) {
     const logs = await this.proctoringLogRepository.find({ where: { submissionId } });
 
     return logs.map((log) => ({
@@ -171,9 +148,7 @@ export class ProctoringLogService {
     }));
   }
 
-  async clearLogsForSubmission(submissionId: number, teacherId: number) {
-    await this.verifyTeacherOwnership(submissionId, teacherId);
-
+  async clearLogsForSubmission(submissionId: number) {
     const logs = await this.proctoringLogRepository.find({
       where: { submissionId },
       select: { meta: true },

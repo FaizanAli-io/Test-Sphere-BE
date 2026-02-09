@@ -23,15 +23,12 @@ export function createTypeOrmConfig(): DataSourceOptions {
 
   return {
     type: "mysql",
-    synchronize: true,
     host: url.hostname,
     port: Number(url.port),
     database: url.pathname.replace(/^\//, ""),
     username: decodeURIComponent(url.username),
     password: decodeURIComponent(url.password),
-    logging: process.env.NODE_ENV === "development",
 
-    // 👇 GLOB PATTERNS
     migrations: [join(__dirname, "migrations", "*.{ts,js}")],
     entities: [join(__dirname, "entities", "**", "*.entity.{ts,js}")],
   };

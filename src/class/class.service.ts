@@ -1,13 +1,7 @@
-import { Repository } from "typeorm";
+import { In, Not, Repository } from "typeorm";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Injectable, ConflictException, NotFoundException } from "@nestjs/common";
-import {
-  JoinClassDto,
-  CreateClassDto,
-  UpdateClassDto,
-  ManageStudentDto,
-  InviteTeacherDto,
-} from "./class.dto";
+import { CreateClassDto, UpdateClassDto, ManageStudentDto } from "./class.dto";
 import {
   User,
   Class,
@@ -144,10 +138,8 @@ export class ClassService {
     };
   }
 
-  async joinClass(dto: JoinClassDto, userId: number) {
-    const found = await this.classRepository.findOne({
-      where: { code: dto.code },
-    });
+  async joinClass(code: string, userId: number) {
+    const found = await this.classRepository.findOne({ where: { code } });
     if (!found) throw new NotFoundException("Class not found");
 
     const already = await this.studentClassRepository.findOne({
@@ -161,7 +153,6 @@ export class ClassService {
     });
 
     await this.studentClassRepository.save(studentClass);
-
     return {
       message: "Join request sent, awaiting teacher approval",
       class: found,
@@ -178,26 +169,76 @@ export class ClassService {
     return { message: "Left class successfully" };
   }
 
-  async inviteTeacher(classId: number, dto: InviteTeacherDto) {
+  async getInviteableTeachers(classId: number) {
+    const cls = await this.classRepository.findOne({ where: { id: classId } });
+    if (!cls) throw new NotFoundException("Class not found");
+
+    const currentTeachers = await this.classTeacherRepository.find({
+      where: { classId },
+      relations: { teacher: true },
+    });
+
+    const currentTeacherIds = currentTeachers.map((ct) => ct.teacherId);
+
+    return this.userRepository.find({
+      where: {
+        role: UserRole.TEACHER,
+        id: Not(In(currentTeacherIds)),
+      },
+    });
+  }
+
+  async inviteTeacher(classId: number, teacherId: number, role: ClassTeacherRole) {
     const classRecord = await this.classRepository.findOne({ where: { id: classId } });
     if (!classRecord) throw new NotFoundException("Class not found");
 
     const invitedTeacher = await this.userRepository.findOne({
-      where: { email: dto.email, role: UserRole.TEACHER },
+      where: { id: teacherId, role: UserRole.TEACHER },
     });
-    if (!invitedTeacher) throw new NotFoundException("Teacher with this email does not exist");
+    if (!invitedTeacher) throw new NotFoundException("Teacher with this ID does not exist");
 
     const existing = await this.classTeacherRepository.findOne({
-      where: { classId, teacherId: invitedTeacher.id },
+      where: { classId, teacherId },
     });
     if (existing) throw new ConflictException("Teacher is already in this class");
 
-    await this.classTeacherRepository.insert({
-      classId,
-      teacherId: invitedTeacher.id,
-      role: dto.role,
+    await this.classTeacherRepository.insert({ classId, teacherId, role });
+    return {
+      message: `Teacher (${invitedTeacher.name}) added successfully as ${role}`,
+    };
+  }
+
+  async updateTeacher(classId: number, teacherId: number, role: ClassTeacherRole) {
+    const relationship = await this.classTeacherRepository.findOne({
+      where: { classId, teacherId },
     });
 
-    return { message: `Teacher (${invitedTeacher.email}) added successfully as ${dto.role}` };
+    if (!relationship) {
+      throw new NotFoundException("Teacher is not assigned to this class");
+    }
+
+    if (relationship.role === ClassTeacherRole.OWNER) {
+      throw new ConflictException("Cannot change the role of the class owner");
+    }
+
+    await this.classTeacherRepository.update({ classId, teacherId }, { role });
+    return { message: `Role updated to ${role} successfully` };
+  }
+
+  async removeTeacher(classId: number, teacherId: number) {
+    const relationship = await this.classTeacherRepository.findOne({
+      where: { classId, teacherId },
+    });
+
+    if (!relationship) {
+      throw new NotFoundException("Teacher is not assigned to this class");
+    }
+
+    if (relationship.role === ClassTeacherRole.OWNER) {
+      throw new ConflictException("The Owner cannot be removed from the class");
+    }
+
+    await this.classTeacherRepository.delete({ classId, teacherId });
+    return { message: "Teacher removed successfully from the class" };
   }
 }

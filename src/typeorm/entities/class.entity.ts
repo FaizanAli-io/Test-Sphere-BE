@@ -24,9 +24,6 @@ export class Class {
   @Column({ type: "text" })
   description: string;
 
-  @Column()
-  teacherId: number;
-
   @CreateDateColumn()
   createdAt: Date;
 

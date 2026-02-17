@@ -9,113 +9,105 @@ export interface GeneratedQuestion {
   image?: string;
 }
 
-/**
- * Generate structured test questions using ChatGPT (OpenRouter).
- * Matches GeneratedQuestion interface (without testId).
- *
- * @param {string} prompt - The topic or instructions for the questions.
- * @returns {Promise<GeneratedQuestion[]>} Structured question list.
- */
 export async function generateStructuredQuestions(
   apiKey: string,
   prompt: string,
 ): Promise<GeneratedQuestion[]> {
-  const client = new OpenAI({
-    apiKey,
-    baseURL: "https://openrouter.ai/api/v1",
-  });
+  const client = new OpenAI({ apiKey, baseURL: "https://openrouter.ai/api/v1" });
 
-  const response = await client.chat.completions.create({
-    model: "gpt-4o-mini",
-    messages: [
-      {
-        role: "system",
-        content: `
-You are a professional academic question generator for a school testing system.
-
-### OBJECTIVE:
-Generate questions that follow the user's prompt *exactly* and do not deviate in:
-- Number of questions
-- Question type(s)
-- Topic or subject
-- Mark allocation
-- Formatting or numbering (if specified)
-
-### RULES:
-1. **Follow the user's prompt literally.**  
-   - If they ask for 4 MCQs, generate 4 MCQs only — not any other type.
-   - If they specify marks, include them exactly as stated.
-   - If they specify question numbering or a topic, match it precisely.
-
-2. **Never add your own interpretation** or variety unless explicitly requested.
-3. **Output JSON ONLY** following the schema strictly — no text, no explanations.
-4. **Include "options" only for MULTIPLE_CHOICE.**
-5. **Include "correctAnswer" only for MULTIPLE_CHOICE and TRUE_FALSE.**
-6. **For TRUE_FALSE:** correctAnswer = 0 (False) or 1 (True).
-7. **For SHORT_ANSWER / LONG_ANSWER:** omit "options" and "correctAnswer".
-8. Each question must be clear, realistic, and academically relevant.
-9. If the prompt mentions images or diagrams, include an image URL field (may be empty string if unspecified).
-
-### OUTPUT FORMAT:
-Return valid JSON strictly under this structure:
-{
-  "questions": [
-    {
-      "text": string,
-      "type": "MULTIPLE_CHOICE" | "TRUE_FALSE" | "SHORT_ANSWER" | "LONG_ANSWER",
-      "options"?: string[],
-      "correctAnswer"?: number,
-      "maxMarks"?: number,
-      "image"?: string
-    }
-  ]
-}
-        `,
-      },
-      {
-        role: "user",
-        content: `USER PROMPT: ${prompt}`,
-      },
-    ],
-    response_format: {
-      type: "json_schema",
-      json_schema: {
-        name: "generated_questions",
-        schema: {
-          type: "object",
-          properties: {
-            questions: {
-              type: "array",
-              items: {
-                type: "object",
-                properties: {
-                  text: { type: "string" },
-                  type: {
-                    type: "string",
-                    enum: ["MULTIPLE_CHOICE", "TRUE_FALSE", "SHORT_ANSWER", "LONG_ANSWER"],
+  try {
+    const response = await client.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `You are a professional academic question generator. 
+          Follow the user prompt exactly regarding count and topic.
+          
+          SCHEMA RULES:
+          1. MULTIPLE_CHOICE: Requires 'options' and 'correctAnswer' (index).
+          2. TRUE_FALSE: 'options' must be ["False", "True"]. 'correctAnswer' is 0 or 1.
+          3. SHORT/LONG_ANSWER: Omit 'options' and 'correctAnswer'.
+          4. All JSON must strictly follow the provided schema.`,
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "generated_questions",
+          strict: true,
+          schema: {
+            type: "object",
+            properties: {
+              questions: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    text: { type: "string" },
+                    type: {
+                      type: "string",
+                      enum: ["MULTIPLE_CHOICE", "TRUE_FALSE", "SHORT_ANSWER", "LONG_ANSWER"],
+                    },
+                    options: {
+                      type: ["array", "null"],
+                      items: { type: "string" },
+                    },
+                    correctAnswer: { type: ["integer", "null"] },
+                    maxMarks: { type: "integer" },
+                    image: { type: "string" },
                   },
-                  options: {
-                    type: "array",
-                    items: { type: "string" },
-                  },
-                  correctAnswer: { type: "integer" },
-                  maxMarks: { type: "integer" },
-                  image: { type: "string" },
+                  required: ["text", "type", "options", "correctAnswer", "maxMarks", "image"],
+                  additionalProperties: false,
                 },
-                required: ["text", "type"],
-                additionalProperties: false,
               },
             },
+            required: ["questions"],
+            additionalProperties: false,
           },
-          required: ["questions"],
         },
       },
-    },
+    });
+
+    const content = response.choices[0].message.content;
+    if (!content) throw new Error("AI returned an empty response.");
+
+    const parsed = JSON.parse(content) as { questions: GeneratedQuestion[] };
+    return processQuestions(parsed.questions);
+  } catch (error) {
+    console.error("Failed to generate questions:", error);
+    throw new Error("Validation failed for generated questions.");
+  }
+}
+
+export function processQuestions(questions: GeneratedQuestion[]): GeneratedQuestion[] {
+  const typeOrder = ["MULTIPLE_CHOICE", "TRUE_FALSE", "SHORT_ANSWER", "LONG_ANSWER"];
+
+  const sortedQuestions = [...questions].sort((a, b) => {
+    return typeOrder.indexOf(a.type) - typeOrder.indexOf(b.type);
   });
 
-  const content = response.choices[0].message.content;
-  if (!content) throw new Error("No content returned from OpenAI response.");
+  return sortedQuestions.map((q) => {
+    return q.type === "MULTIPLE_CHOICE" && q.options && q.correctAnswer !== undefined
+      ? shuffleMCQ(q)
+      : q;
+  });
+}
 
-  const structured = JSON.parse(content) as { questions: GeneratedQuestion[] };
-  return structured.questions;
+function shuffleMCQ(question: GeneratedQuestion): GeneratedQuestion {
+  const options = [...(question.options || [])];
+  const correctValue = options[question.correctAnswer!];
+
+  for (let i = options.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [options[i], options[j]] = [options[j], options[i]];
+  }
+
+  const newCorrectIndex = options.indexOf(correctValue);
+
+  return { ...question, options, correctAnswer: newCorrectIndex };
 }

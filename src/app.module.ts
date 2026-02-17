@@ -1,5 +1,6 @@
 import { ConfigModule } from "./config/config.module";
 import { Module, MiddlewareConsumer } from "@nestjs/common";
+import { TypeOrmModule } from "@nestjs/typeorm";
 import { LoggerMiddleware } from "./common/middleware/logger.middleware";
 
 import { AuthModule } from "./auth/auth.module";
@@ -13,11 +14,14 @@ import { StreamingModule } from "./streaming/streaming.module";
 
 import { AppService } from "./app.service";
 import { AppController } from "./app.controller";
-import { PrismaModule } from "./prisma/prisma.module";
+import { TypeOrmConfigModule } from "./typeorm/typeorm.module";
+import { User } from "./typeorm/entities";
 
 @Module({
   imports: [
     ConfigModule,
+    TypeOrmConfigModule,
+    TypeOrmModule.forFeature([User]),
     AuthModule,
     TestModule,
     AgentModule,
@@ -26,7 +30,6 @@ import { PrismaModule } from "./prisma/prisma.module";
     SubmissionModule,
     ProctoringLogModule,
     StreamingModule,
-    PrismaModule,
   ],
   providers: [AppService],
   controllers: [AppController],

@@ -5,9 +5,6 @@ import {
   BadRequestException,
   UnauthorizedException,
 } from "@nestjs/common";
-import * as bcrypt from "bcryptjs";
-import { JwtService } from "@nestjs/jwt";
-import { ConfigService } from "@config/config.service";
 
 import {
   LoginDto,
@@ -17,17 +14,22 @@ import {
   ResetPasswordDto,
   ForgotPasswordDto,
 } from "./auth.dto";
-import { UserRole } from "@prisma/client";
+
+import bcrypt from "bcryptjs";
+import { Repository } from "typeorm";
+
+import { JwtService } from "@nestjs/jwt";
+import { InjectRepository } from "@nestjs/typeorm";
+
+import { User } from "../typeorm/entities";
 import { EmailService } from "../email/email.service";
-import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
 export class AuthService {
   constructor(
-    private prisma: PrismaService,
-    private jwtService: JwtService,
+    @InjectRepository(User) private userRepository: Repository<User>,
     private emailService: EmailService,
-    private configService: ConfigService,
+    private jwtService: JwtService,
   ) {}
 
   OTP_LIFETIME = 10 * 60 * 1000;
@@ -37,13 +39,11 @@ export class AuthService {
   }
 
   private async buildAuthResponse(user: any) {
-    const token = await this.jwtService.signAsync(
-      { sub: user.id, email: user.email, role: user.role },
-      {
-        expiresIn: "7d",
-        secret: this.configService.get("JWT_SECRET"),
-      },
-    );
+    const token = await this.jwtService.signAsync({
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+    });
 
     return {
       accessToken: token,
@@ -53,7 +53,7 @@ export class AuthService {
 
   async signup(dto: SignupDto) {
     // --- Find existing user by email ---
-    const existingUser = await this.prisma.user.findUnique({
+    const existingUser = await this.userRepository.findOne({
       where: { email: dto.email },
       select: {
         id: true,
@@ -68,10 +68,8 @@ export class AuthService {
     if (existingUser) {
       // --- Case 1: Existing Google → adding password ---
       if (existingUser.firebaseId && dto.password && !existingUser.password) {
-        const updatedUser = await this.prisma.user.update({
-          where: { email: dto.email },
-          data: { password: await bcrypt.hash(dto.password, 10) },
-        });
+        existingUser.password = await bcrypt.hash(dto.password, 10);
+        const updatedUser = await this.userRepository.save(existingUser);
 
         return {
           message: "Password linked successfully. You can now log in with email or Google.",
@@ -81,10 +79,9 @@ export class AuthService {
 
       // --- Case 2: Existing Password → adding Google ---
       if (existingUser.password && dto.firebaseId && !existingUser.firebaseId) {
-        const updatedUser = await this.prisma.user.update({
-          where: { email: dto.email },
-          data: { firebaseId: dto.firebaseId, verified: true },
-        });
+        existingUser.firebaseId = dto.firebaseId;
+        existingUser.verified = true;
+        const updatedUser = await this.userRepository.save(existingUser);
 
         return {
           message: "Google account linked successfully. You can now log in with email or Google.",
@@ -107,7 +104,7 @@ export class AuthService {
 
     // --- Ensure CNIC is unique ---
     if (dto.cnic) {
-      const cnicUser = await this.prisma.user.findUnique({
+      const cnicUser = await this.userRepository.findOne({
         where: { cnic: dto.cnic },
         select: { id: true },
       });
@@ -116,21 +113,21 @@ export class AuthService {
 
     // --- Google signup ---
     if (dto.firebaseId) {
-      const user = await this.prisma.user.create({
-        data: {
-          verified: true,
-          name: dto.name,
-          role: dto.role,
-          email: dto.email,
-          firebaseId: dto.firebaseId,
-          profileImage: dto.profileImage,
-          cnic: dto.cnic,
-        },
+      const user = this.userRepository.create({
+        verified: true,
+        cnic: dto.cnic,
+        name: dto.name,
+        role: dto.role,
+        email: dto.email,
+        firebaseId: dto.firebaseId,
+        profileImage: dto.profileImage,
       });
+
+      const savedUser = await this.userRepository.save(user);
 
       return {
         message: "Signup successful via Google. Account verified.",
-        ...(await this.buildAuthResponse(user)),
+        ...(await this.buildAuthResponse(savedUser)),
       };
     }
 
@@ -140,24 +137,20 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const otp = this.generateOtp();
 
-    const user = await this.prisma.$transaction(async (tx) => {
-      const createdUser = await tx.user.create({
-        data: {
-          name: dto.name,
-          role: dto.role,
-          email: dto.email,
-          password: hashedPassword,
-          profileImage: dto.profileImage,
-          cnic: dto.cnic,
-          verified: false,
-          otp,
-          otpExpiry: new Date(Date.now() + this.OTP_LIFETIME),
-        },
-      });
-
-      await this.emailService.sendOtpEmail(createdUser.email, otp);
-      return createdUser;
+    const user = this.userRepository.create({
+      cnic: dto.cnic,
+      name: dto.name,
+      role: dto.role,
+      email: dto.email,
+      password: hashedPassword,
+      profileImage: dto.profileImage,
+      verified: false,
+      otp,
+      otpExpiry: new Date(Date.now() + this.OTP_LIFETIME),
     });
+
+    const createdUser = await this.userRepository.save(user);
+    await this.emailService.sendOtpEmail(createdUser.email, otp);
 
     return {
       message: "Signup successful. OTP sent to email for verification.",
@@ -165,7 +158,7 @@ export class AuthService {
   }
 
   async resendOtp(email: string) {
-    const user = await this.prisma.user.findUnique({
+    const user = await this.userRepository.findOne({
       where: { email },
       select: { id: true, email: true, verified: true },
     });
@@ -176,13 +169,9 @@ export class AuthService {
 
     const otp = this.generateOtp();
 
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        otp,
-        otpExpiry: new Date(Date.now() + this.OTP_LIFETIME),
-      },
-    });
+    user.otp = otp;
+    user.otpExpiry = new Date(Date.now() + this.OTP_LIFETIME);
+    await this.userRepository.save(user);
 
     await this.emailService.sendOtpEmail(user.email, otp);
 
@@ -193,7 +182,7 @@ export class AuthService {
   }
 
   async verifyOtp(dto: VerifyOtpDto) {
-    const user = await this.prisma.user.findUnique({
+    const user = await this.userRepository.findOne({
       where: { email: dto.email },
     });
 
@@ -208,13 +197,9 @@ export class AuthService {
     if (user.otpExpiry < new Date()) {
       const newOtp = this.generateOtp();
 
-      await this.prisma.user.update({
-        where: { id: user.id },
-        data: {
-          otp: newOtp,
-          otpExpiry: new Date(Date.now() + this.OTP_LIFETIME),
-        },
-      });
+      user.otp = newOtp;
+      user.otpExpiry = new Date(Date.now() + this.OTP_LIFETIME);
+      await this.userRepository.save(user);
 
       await this.emailService.sendOtpEmail(user.email, newOtp);
 
@@ -224,20 +209,16 @@ export class AuthService {
       };
     }
 
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        otp: null,
-        verified: true,
-        otpExpiry: null,
-      },
-    });
+    user.otp = null;
+    user.verified = true;
+    user.otpExpiry = null;
+    await this.userRepository.save(user);
 
     return { message: "Account verified successfully.", verified: true };
   }
 
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({
+    const user = await this.userRepository.findOne({
       where: { email: dto.email },
     });
 
@@ -273,26 +254,22 @@ export class AuthService {
   }
 
   async forgotPassword(dto: ForgotPasswordDto) {
-    const user = await this.prisma.user.findUnique({
+    const user = await this.userRepository.findOne({
       where: { email: dto.email },
     });
     if (!user) throw new NotFoundException("User not found");
 
     const otp = this.generateOtp();
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        otp,
-        otpExpiry: new Date(Date.now() + this.OTP_LIFETIME),
-      },
-    });
+    user.otp = otp;
+    user.otpExpiry = new Date(Date.now() + this.OTP_LIFETIME);
+    await this.userRepository.save(user);
 
     await this.emailService.sendOtpEmail(user.email, otp);
     return { message: "OTP sent to your email for password reset." };
   }
 
   async resetPassword(dto: ResetPasswordDto) {
-    const user = await this.prisma.user.findUnique({
+    const user = await this.userRepository.findOne({
       where: { email: dto.email },
     });
 
@@ -302,30 +279,26 @@ export class AuthService {
       throw new BadRequestException("OTP expired");
 
     const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: {
-        otp: null,
-        otpExpiry: null,
-        password: hashedPassword,
-      },
-    });
+    user.otp = null;
+    user.otpExpiry = null;
+    user.password = hashedPassword;
+    await this.userRepository.save(user);
 
     return { message: "Password reset successful." };
   }
 
   async getProfile(userId: number) {
-    const user = await this.prisma.user.findUnique({
+    const user = await this.userRepository.findOne({
       where: { id: userId },
       select: {
         id: true,
+        cnic: true,
         name: true,
         role: true,
         email: true,
         verified: true,
         createdAt: true,
         profileImage: true,
-        cnic: true,
       },
     });
 
@@ -334,28 +307,36 @@ export class AuthService {
   }
 
   async updateProfile(userId: number, dto: UpdateProfileDto) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException("User not found");
 
-    const updatedUser = await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        name: dto.name ?? user.name,
-        profileImage: dto.profileImage ?? user.profileImage,
-        cnic: dto.cnic ?? user.cnic,
-      },
-      select: {
-        id: true,
-        name: true,
-        role: true,
-        email: true,
-        verified: true,
-        createdAt: true,
-        profileImage: true,
-        cnic: true,
-      },
-    });
+    if (dto.name !== undefined) user.name = dto.name;
+    if (dto.profileImage !== undefined) user.profileImage = dto.profileImage;
 
-    return updatedUser;
+    if (dto.cnic !== undefined && dto.cnic !== user.cnic) {
+      const existing = await this.userRepository.findOne({
+        where: { cnic: dto.cnic },
+        select: { id: true },
+      });
+
+      if (existing && existing.id !== user.id) {
+        throw new ConflictException("CNIC is already registered.");
+      }
+
+      user.cnic = dto.cnic;
+    }
+
+    const updatedUser = await this.userRepository.save(user);
+
+    return {
+      id: updatedUser.id,
+      cnic: updatedUser.cnic,
+      name: updatedUser.name,
+      role: updatedUser.role,
+      email: updatedUser.email,
+      verified: updatedUser.verified,
+      createdAt: updatedUser.createdAt,
+      profileImage: updatedUser.profileImage,
+    };
   }
 }

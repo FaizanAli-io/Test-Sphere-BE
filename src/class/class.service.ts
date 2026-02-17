@@ -1,17 +1,24 @@
+import { In, Not, Repository } from "typeorm";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Injectable, ConflictException, NotFoundException } from "@nestjs/common";
+import { CreateClassDto, UpdateClassDto, ManageStudentDto } from "./class.dto";
 import {
-  Injectable,
-  ConflictException,
-  NotFoundException,
-  ForbiddenException,
-} from "@nestjs/common";
-
-import { JoinClassDto, CreateClassDto, UpdateClassDto, ManageStudentDto } from "./class.dto";
-import { UserRole } from "@prisma/client";
-import { PrismaService } from "../prisma/prisma.service";
+  User,
+  Class,
+  ClassTeacher,
+  StudentClass,
+  UserRole,
+  ClassTeacherRole,
+} from "../typeorm/entities";
 
 @Injectable()
 export class ClassService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    @InjectRepository(User) private userRepository: Repository<User>,
+    @InjectRepository(Class) private classRepository: Repository<Class>,
+    @InjectRepository(ClassTeacher) private classTeacherRepository: Repository<ClassTeacher>,
+    @InjectRepository(StudentClass) private studentClassRepository: Repository<StudentClass>,
+  ) {}
 
   private generateClassCode(): string {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -21,170 +28,217 @@ export class ClassService {
   }
 
   async createClass(dto: CreateClassDto, userId: number) {
-    return this.prisma.class.create({
-      data: {
-        name: dto.name,
-        description: dto.description ?? "",
-        code: this.generateClassCode(),
-        teacherId: userId,
-      },
-    });
-  }
-
-  async joinClass(dto: JoinClassDto, userId: number) {
-    const found = await this.prisma.class.findUnique({
-      where: { code: dto.code },
-    });
-    if (!found) throw new NotFoundException("Class not found");
-
-    const already = await this.prisma.studentClass.findUnique({
-      where: { studentId_classId: { studentId: userId, classId: found.id } },
-    });
-    if (already) throw new ConflictException("Already joined this class");
-
-    await this.prisma.studentClass.create({
-      data: { studentId: userId, classId: found.id },
+    const cls = this.classRepository.create({
+      name: dto.name,
+      code: this.generateClassCode(),
+      description: dto.description ?? "",
     });
 
-    return {
-      message: "Join request sent, awaiting teacher approval",
-      class: found,
-    };
+    const savedClass = await this.classRepository.save(cls);
+
+    await this.classTeacherRepository.save({
+      teacherId: userId,
+      classId: savedClass.id,
+      role: ClassTeacherRole.OWNER,
+    });
+
+    return savedClass;
   }
 
   async getMyClasses(userId: number, role: UserRole) {
     if (role === UserRole.TEACHER) {
-      return this.prisma.class.findMany({
+      return this.classTeacherRepository.find({
         where: { teacherId: userId },
-        include: { students: { include: { student: true } }, tests: true },
+        relations: { class: { students: { student: true }, tests: true } },
       });
     }
 
-    return this.prisma.studentClass.findMany({
+    return this.studentClassRepository.find({
       where: { studentId: userId },
-      include: { class: { include: { teacher: true, tests: true } } },
+      relations: { class: { teachers: { teacher: true }, tests: true } },
     });
   }
 
   async getClassById(id: number) {
-    const cls = await this.prisma.class.findUnique({
+    const cls = await this.classRepository.findOne({
       where: { id },
-      include: {
+      relations: {
         tests: true,
-        teacher: true,
-        students: { include: { student: true } },
+        students: { student: true },
+        teachers: { teacher: true },
       },
     });
     if (!cls) throw new NotFoundException("Class not found");
     return cls;
   }
 
-  async updateClass(id: number, dto: UpdateClassDto, userId: number) {
-    const cls = await this.prisma.class.findUnique({ where: { id } });
+  async updateClass(id: number, dto: UpdateClassDto) {
+    const cls = await this.classRepository.findOne({ where: { id } });
     if (!cls) throw new NotFoundException("Class not found");
-    if (cls.teacherId !== userId) throw new ForbiddenException("You cannot edit this class");
 
-    return this.prisma.class.update({
-      where: { id },
-      data: { ...dto },
-    });
+    Object.assign(cls, dto);
+    return this.classRepository.save(cls);
   }
 
-  async deleteClass(id: number, userId: number) {
-    const cls = await this.prisma.class.findUnique({ where: { id } });
+  async deleteClass(id: number) {
+    const cls = await this.classRepository.findOne({ where: { id } });
     if (!cls) throw new NotFoundException("Class not found");
-    if (cls.teacherId !== userId) throw new ForbiddenException("You cannot delete this class");
 
-    await this.prisma.class.delete({ where: { id } });
+    await this.classRepository.delete({ id });
     return { message: "Class deleted successfully" };
   }
 
-  async leaveClass(classId: number, userId: number) {
-    const record = await this.prisma.studentClass.findUnique({
-      where: { studentId_classId: { studentId: userId, classId } },
-    });
-    if (!record) throw new NotFoundException("You are not in this class");
-
-    await this.prisma.studentClass.delete({
-      where: { studentId_classId: { studentId: userId, classId } },
-    });
-
-    return { message: "Left class successfully" };
-  }
-
-  async removeStudent(classId: number, dto: ManageStudentDto, userId: number) {
-    const cls = await this.prisma.class.findUnique({ where: { id: classId } });
-    if (!cls) throw new NotFoundException("Class not found");
-    if (cls.teacherId !== userId) throw new ForbiddenException("Only teacher can remove students");
-
-    const studentClass = await this.prisma.studentClass.findUnique({
-      where: { studentId_classId: { studentId: dto.studentId, classId } },
-    });
-
-    if (!studentClass) throw new NotFoundException("Student not found in this class");
-
-    await this.prisma.studentClass.delete({
-      where: { studentId_classId: { studentId: dto.studentId, classId } },
-    });
-
-    return { message: "Student removed from class" };
-  }
-
-  async approveStudent(classId: number, dto: ManageStudentDto, userId: number) {
-    const cls = await this.prisma.class.findUnique({ where: { id: classId } });
-    if (!cls) throw new NotFoundException("Class not found");
-    if (cls.teacherId !== userId) throw new ForbiddenException("Only teacher can approve students");
-
-    const { studentId } = dto;
-
-    const record = await this.prisma.studentClass.findUnique({
-      where: { studentId_classId: { studentId, classId } },
+  async approveStudent(classId: number, dto: ManageStudentDto) {
+    const record = await this.studentClassRepository.findOne({
+      where: { studentId: dto.studentId, classId },
     });
     if (!record) throw new NotFoundException("Join request not found");
     if (record.approved) throw new ConflictException("Student already approved");
 
-    await this.prisma.studentClass.update({
-      where: { studentId_classId: { studentId, classId } },
-      data: { approved: true },
-    });
-
+    record.approved = true;
+    await this.studentClassRepository.save(record);
     return { message: "Student approved successfully" };
   }
 
-  async approveAllPending(classId: number, userId: number) {
-    const cls = await this.prisma.class.findUnique({ where: { id: classId } });
-    if (!cls) throw new NotFoundException("Class not found");
-    if (cls.teacherId !== userId) throw new ForbiddenException("Only teacher can approve students");
-
-    const result = await this.prisma.studentClass.updateMany({
-      where: {
-        classId,
-        approved: false,
-      },
-      data: { approved: true },
+  async removeStudent(classId: number, dto: ManageStudentDto) {
+    const studentClass = await this.studentClassRepository.findOne({
+      where: { studentId: dto.studentId, classId },
     });
+    if (!studentClass) throw new NotFoundException("Student not found in this class");
+
+    await this.studentClassRepository.delete({ studentId: dto.studentId, classId });
+    return { message: "Student removed from class" };
+  }
+
+  async approveAllPending(classId: number) {
+    const result = await this.studentClassRepository
+      .createQueryBuilder()
+      .update(StudentClass)
+      .set({ approved: true })
+      .where("classId = :classId AND approved = :approved", { classId, approved: false })
+      .execute();
 
     return {
-      message: `${result.count} student(s) approved successfully`,
-      count: result.count,
+      message: `${result.affected} student(s) approved successfully`,
+      count: result.affected,
     };
   }
 
-  async rejectAllPending(classId: number, userId: number) {
-    const cls = await this.prisma.class.findUnique({ where: { id: classId } });
-    if (!cls) throw new NotFoundException("Class not found");
-    if (cls.teacherId !== userId) throw new ForbiddenException("Only teacher can reject students");
-
-    const result = await this.prisma.studentClass.deleteMany({
-      where: {
-        classId,
-        approved: false,
-      },
-    });
+  async rejectAllPending(classId: number) {
+    const result = await this.studentClassRepository
+      .createQueryBuilder()
+      .delete()
+      .from(StudentClass)
+      .where("classId = :classId AND approved = :approved", { classId, approved: false })
+      .execute();
 
     return {
-      message: `${result.count} pending request(s) rejected successfully`,
-      count: result.count,
+      message: `${result.affected} student(s) rejected successfully`,
+      count: result.affected,
     };
+  }
+
+  async joinClass(code: string, userId: number) {
+    const found = await this.classRepository.findOne({ where: { code } });
+    if (!found) throw new NotFoundException("Class not found");
+
+    const already = await this.studentClassRepository.findOne({
+      where: { studentId: userId, classId: found.id },
+    });
+    if (already) throw new ConflictException("Already joined this class");
+
+    const studentClass = this.studentClassRepository.create({
+      studentId: userId,
+      classId: found.id,
+    });
+
+    await this.studentClassRepository.save(studentClass);
+    return {
+      message: "Join request sent, awaiting teacher approval",
+      class: found,
+    };
+  }
+
+  async leaveClass(classId: number, userId: number) {
+    const record = await this.studentClassRepository.findOne({
+      where: { studentId: userId, classId },
+    });
+    if (!record) throw new NotFoundException("You are not in this class");
+
+    await this.studentClassRepository.delete({ studentId: userId, classId });
+    return { message: "Left class successfully" };
+  }
+
+  async getInviteableTeachers(classId: number) {
+    const cls = await this.classRepository.findOne({ where: { id: classId } });
+    if (!cls) throw new NotFoundException("Class not found");
+
+    const currentTeachers = await this.classTeacherRepository.find({
+      where: { classId },
+      relations: { teacher: true },
+    });
+
+    const currentTeacherIds = currentTeachers.map((ct) => ct.teacherId);
+
+    return this.userRepository.find({
+      where: {
+        role: UserRole.TEACHER,
+        id: Not(In(currentTeacherIds)),
+      },
+    });
+  }
+
+  async inviteTeacher(classId: number, teacherId: number, role: ClassTeacherRole) {
+    const classRecord = await this.classRepository.findOne({ where: { id: classId } });
+    if (!classRecord) throw new NotFoundException("Class not found");
+
+    const invitedTeacher = await this.userRepository.findOne({
+      where: { id: teacherId, role: UserRole.TEACHER },
+    });
+    if (!invitedTeacher) throw new NotFoundException("Teacher with this ID does not exist");
+
+    const existing = await this.classTeacherRepository.findOne({
+      where: { classId, teacherId },
+    });
+    if (existing) throw new ConflictException("Teacher is already in this class");
+
+    await this.classTeacherRepository.insert({ classId, teacherId, role });
+    return {
+      message: `Teacher (${invitedTeacher.name}) added successfully as ${role}`,
+    };
+  }
+
+  async updateTeacher(classId: number, teacherId: number, role: ClassTeacherRole) {
+    const relationship = await this.classTeacherRepository.findOne({
+      where: { classId, teacherId },
+    });
+
+    if (!relationship) {
+      throw new NotFoundException("Teacher is not assigned to this class");
+    }
+
+    if (relationship.role === ClassTeacherRole.OWNER) {
+      throw new ConflictException("Cannot change the role of the class owner");
+    }
+
+    await this.classTeacherRepository.update({ classId, teacherId }, { role });
+    return { message: `Role updated to ${role} successfully` };
+  }
+
+  async removeTeacher(classId: number, teacherId: number) {
+    const relationship = await this.classTeacherRepository.findOne({
+      where: { classId, teacherId },
+    });
+
+    if (!relationship) {
+      throw new NotFoundException("Teacher is not assigned to this class");
+    }
+
+    if (relationship.role === ClassTeacherRole.OWNER) {
+      throw new ConflictException("The Owner cannot be removed from the class");
+    }
+
+    await this.classTeacherRepository.delete({ classId, teacherId });
+    return { message: "Teacher removed successfully from the class" };
   }
 }

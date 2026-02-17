@@ -4,8 +4,19 @@ import {
   ForbiddenException,
   BadRequestException,
 } from "@nestjs/common";
-import { TestStatus, QuestionType, GradingStatus, SubmissionStatus } from "@prisma/client";
-import { PrismaService } from "../prisma/prisma.service";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository, DataSource } from "typeorm";
+import {
+  Test,
+  Question,
+  Submission,
+  Answer,
+  User,
+  TestStatus,
+  QuestionType,
+  GradingStatus,
+  SubmissionStatus,
+} from "../typeorm/entities";
 
 import { SubmitTestDto, StartSubmissionDto, GradeSubmissionDto } from "./submission.dto";
 import { ProctoringLogService } from "../procotoring-log/procotoring-log.service";
@@ -13,31 +24,20 @@ import { ProctoringLogService } from "../procotoring-log/procotoring-log.service
 @Injectable()
 export class SubmissionService {
   constructor(
-    private prisma: PrismaService,
+    private dataSource: DataSource,
     private proctoringLogService: ProctoringLogService,
+    @InjectRepository(Test)
+    private testRepository: Repository<Test>,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
+    @InjectRepository(Question)
+    private questionRepository: Repository<Question>,
+    @InjectRepository(Submission)
+    private submissionRepository: Repository<Submission>,
   ) {}
 
-  private readonly submissionInclude = {
-    answers: { include: { question: true } },
-    user: { select: { id: true, name: true, email: true } },
-    test: { include: { class: { select: { id: true, name: true } } } },
-  } as const;
-
-  private async ensureTeacherOwnsSubmission(teacherId: number, submissionId: number) {
-    const submission = await this.prisma.submission.findUnique({
-      where: { id: submissionId },
-      include: { test: { include: { class: true } } },
-    });
-
-    if (!submission) throw new NotFoundException("Submission not found");
-    if (submission.test.class.teacherId !== teacherId)
-      throw new ForbiddenException("Not authorized");
-
-    return submission;
-  }
-
   async startTest(userId: number, dto: StartSubmissionDto) {
-    const test = await this.prisma.test.findUnique({
+    const test = await this.testRepository.findOne({
       where: { id: dto.testId },
       select: { id: true, startAt: true, endAt: true, status: true },
     });
@@ -59,29 +59,30 @@ export class SubmissionService {
       throw new BadRequestException(`Test ended ${minutes} minutes ago`);
     }
 
-    const existing = await this.prisma.submission.findUnique({
-      where: { userId_testId: { userId, testId: dto.testId } },
+    const existing = await this.submissionRepository.findOne({
+      where: { userId, testId: dto.testId },
     });
     if (existing) throw new BadRequestException("Submission already exists for this test");
 
-    return this.prisma.submission.create({
-      data: {
-        userId,
-        testId: dto.testId,
-        startedAt: new Date(),
-        status: SubmissionStatus.IN_PROGRESS,
-      },
+    const submission = this.submissionRepository.create({
+      userId,
+      testId: dto.testId,
+      startedAt: new Date(),
+      status: SubmissionStatus.IN_PROGRESS,
     });
+
+    return this.submissionRepository.save(submission);
   }
 
   async submitTest(userId: number, dto: SubmitTestDto) {
-    const submission = await this.prisma.submission.findFirst({
+    const submission = await this.submissionRepository.findOne({
       where: { userId, status: SubmissionStatus.IN_PROGRESS },
-      include: { test: { select: { id: true } } },
+      relations: { test: true },
+      select: { id: true, test: { id: true } },
     });
     if (!submission) throw new NotFoundException("Active submission not found");
 
-    const questions = await this.prisma.question.findMany({
+    const questions = await this.questionRepository.find({
       where: { testId: submission.test.id },
       select: { id: true, type: true, correctAnswer: true, maxMarks: true },
     });
@@ -101,110 +102,152 @@ export class SubmissionService {
         gradingStatus = GradingStatus.AUTOMATIC;
       }
 
-      return {
-        studentId: userId,
-        questionId: ans.questionId,
-        submissionId: submission.id,
-        answer: ans.answer,
-        obtainedMarks,
-        gradingStatus,
-      };
+      const answerEntity = new Answer();
+      answerEntity.studentId = userId;
+      answerEntity.questionId = ans.questionId;
+      answerEntity.submissionId = submission.id;
+      answerEntity.answer = ans.answer || null;
+      answerEntity.obtainedMarks = obtainedMarks;
+      answerEntity.gradingStatus = gradingStatus;
+      return answerEntity;
     });
 
-    await this.prisma.$transaction([
-      this.prisma.answer.createMany({
-        data: answersData,
-        skipDuplicates: true,
-      }),
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-      this.prisma.submission.update({
-        where: { id: submission.id },
-        data: {
+    try {
+      // Save all answers
+      await queryRunner.manager.save(answersData);
+
+      // Update submission status
+      await queryRunner.manager.update(
+        Submission,
+        { id: submission.id },
+        {
           status: SubmissionStatus.SUBMITTED,
           submittedAt: new Date(),
         },
-      }),
-    ]);
+      );
+
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
 
     return this.getSubmissionWithDetails(submission.id);
   }
 
-  async gradeSubmission(teacherId: number, submissionId: number, dto: GradeSubmissionDto) {
-    await this.ensureTeacherOwnsSubmission(teacherId, submissionId);
+  async gradeSubmission(submissionId: number, dto: GradeSubmissionDto) {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    await this.prisma.$transaction(
-      dto.answers.map((a) =>
-        this.prisma.answer.update({
-          where: { id: a.answerId },
-          data: { obtainedMarks: a.obtainedMarks },
-        }),
-      ),
-    );
+    try {
+      for (const a of dto.answers) {
+        await queryRunner.manager.update(
+          Answer,
+          { id: a.answerId },
+          { obtainedMarks: a.obtainedMarks },
+        );
+      }
+
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
 
     return this.getSubmissionWithDetails(submissionId);
   }
 
-  async updateSubmissionStatus(teacherId: number, submissionId: number, status: SubmissionStatus) {
-    await this.ensureTeacherOwnsSubmission(teacherId, submissionId);
+  async updateSubmissionStatus(submissionId: number, status: SubmissionStatus) {
+    const submission = await this.submissionRepository.findOne({ where: { id: submissionId } });
+    if (!submission) throw new NotFoundException("Submission not found");
 
-    const data: any = { status };
-    if (status === SubmissionStatus.GRADED) data.gradedAt = new Date();
-    else if (status === SubmissionStatus.SUBMITTED) data.gradedAt = null;
+    submission.status = status;
+    if (status === SubmissionStatus.GRADED) submission.gradedAt = new Date();
+    else if (status === SubmissionStatus.SUBMITTED) submission.gradedAt = null;
 
-    await this.prisma.submission.update({ where: { id: submissionId }, data });
+    await this.submissionRepository.save(submission);
     return this.getSubmissionWithDetails(submissionId);
   }
 
-  async getSubmissionsForTest(teacherId: number, testId: number) {
-    const test = await this.prisma.test.findUnique({
+  async getSubmissionsForTest(testId: number) {
+    const test = await this.testRepository.findOne({
       where: { id: testId },
-      select: { class: { select: { teacherId: true } } },
+      relations: { class: true },
     });
 
     if (!test) throw new NotFoundException("Test not found");
-    if (test.class.teacherId !== teacherId) throw new ForbiddenException("Not authorized");
 
-    return this.prisma.submission.findMany({
+    return this.submissionRepository.find({
       where: { testId },
-      include: this.submissionInclude,
-      orderBy: { submittedAt: "asc" },
+      relations: {
+        user: true,
+        test: { class: true },
+        answers: { question: true },
+      },
+      order: { submittedAt: "ASC" },
     });
   }
 
   async getSubmissionsByStudent(studentId: number) {
-    const exists = await this.prisma.user.findUnique({
+    const exists = await this.userRepository.findOne({
       where: { id: studentId },
     });
     if (!exists) throw new NotFoundException("Student not found");
 
-    return this.prisma.submission.findMany({
+    return this.submissionRepository.find({
       where: { userId: studentId },
-      include: this.submissionInclude,
-      orderBy: { submittedAt: "desc" },
+      relations: {
+        answers: { question: true },
+        user: true,
+        test: { class: true },
+      },
+      order: { submittedAt: "DESC" },
     });
   }
 
-  async getSubmission(teacherId: number, submissionId: number) {
-    await this.ensureTeacherOwnsSubmission(teacherId, submissionId);
+  async getSubmission(submissionId: number) {
     return this.getSubmissionWithDetails(submissionId);
   }
 
-  async deleteSubmission(teacherId: number, submissionId: number) {
-    await this.ensureTeacherOwnsSubmission(teacherId, submissionId);
-    await this.proctoringLogService.clearLogsForSubmission(submissionId, teacherId);
+  async deleteSubmission(submissionId: number) {
+    await this.proctoringLogService.clearLogsForSubmission(submissionId);
 
-    await this.prisma.$transaction([
-      this.prisma.answer.deleteMany({ where: { submissionId } }),
-      this.prisma.submission.delete({ where: { id: submissionId } }),
-    ]);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      await queryRunner.manager.delete(Answer, { submissionId });
+      await queryRunner.manager.delete(Submission, { id: submissionId });
+
+      await queryRunner.commitTransaction();
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
 
     return { success: true };
   }
 
   private async getSubmissionWithDetails(submissionId: number) {
-    const submission = await this.prisma.submission.findUnique({
+    const submission = await this.submissionRepository.findOne({
       where: { id: submissionId },
-      include: this.submissionInclude,
+      relations: {
+        answers: { question: true },
+        user: true,
+        test: { class: true },
+      },
     });
     if (!submission) throw new NotFoundException("Submission not found");
     return submission;

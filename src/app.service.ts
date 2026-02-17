@@ -1,10 +1,15 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { PrismaService } from "./prisma/prisma.service";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { User } from "./typeorm/entities";
 
 @Injectable()
 export class AppService {
   private readonly logger = new Logger(AppService.name);
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
+  ) {}
   getHello(): string {
     return `
       <!DOCTYPE html>
@@ -146,7 +151,7 @@ export class AppService {
   async healthCheck() {
     try {
       // Test database connection
-      await this.prisma.$queryRaw`SELECT 1`;
+      await this.userRepository.query("SELECT 1");
 
       return {
         status: "OK",

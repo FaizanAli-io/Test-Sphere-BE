@@ -13,23 +13,34 @@ export class ConfigService {
   }
 
   private loadEnvFile() {
-    try {
-      const fileContent = fs.readFileSync(this.envFilePath, "utf-16le");
+    const encodings: BufferEncoding[] = ["utf8", "utf-16le"];
+    let fileContent: string | undefined;
 
-      const lines = fileContent.split("\n");
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed.startsWith("#")) continue;
-
-        const [key, ...valueParts] = trimmed.split("=");
-        const value = valueParts.join("=").trim().replace(/^"|"$/g, "");
-        if (key) {
-          this.envVars[key.trim()] = value;
-          process.env[key.trim()] = value;
-        }
+    for (const encoding of encodings) {
+      try {
+        fileContent = fs.readFileSync(this.envFilePath, encoding);
+        break;
+      } catch (error) {
+        this.logger.warn(`⚠️ .env read failed with ${encoding}: ${(error as Error)?.message}`);
       }
-    } catch (error) {
-      this.logger.error("❌ Failed to read .env file:", (error as Error)?.message);
+    }
+
+    if (!fileContent) {
+      this.logger.error("❌ Failed to read .env file with supported encodings");
+      return;
+    }
+
+    const lines = fileContent.split("\n");
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+
+      const [key, ...valueParts] = trimmed.split("=");
+      const value = valueParts.join("=").trim().replace(/^"|"$/g, "");
+      if (key) {
+        this.envVars[key.trim()] = value;
+        process.env[key.trim()] = value;
+      }
     }
   }
 

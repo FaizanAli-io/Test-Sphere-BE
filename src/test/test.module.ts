@@ -1,26 +1,22 @@
+import { memoryStorage } from "multer";
 import { Module } from "@nestjs/common";
-import { TestService } from "./test.service";
-import { TestController } from "./test.controller";
-import { PrismaModule } from "../prisma/prisma.module";
-
-import { extname } from "path";
-import { diskStorage } from "multer";
+import { TypeOrmModule } from "@nestjs/typeorm";
 import { MulterModule } from "@nestjs/platform-express";
+
+import { TestService } from "./test.service";
+import { ClassAccessModule } from "../common/access-models/class-role.access-model";
+import { Test, Answer, Question, Submission, QuestionPool } from "../typeorm/entities";
+import { TestController, QuestionController, QuestionPoolController } from "./test.controller";
+
+const MB = 1024 * 1024;
 
 @Module({
   imports: [
-    PrismaModule,
-    MulterModule.register({
-      storage: diskStorage({
-        destination: "./uploads",
-        filename: (_, file, callback) => {
-          const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-          callback(null, `${uniqueSuffix}${extname(file.originalname)}`);
-        },
-      }),
-    }),
+    MulterModule.register({ storage: memoryStorage(), limits: { fileSize: 10 * MB } }),
+    TypeOrmModule.forFeature([Test, Question, QuestionPool, Submission, Answer]),
+    ClassAccessModule,
   ],
-  controllers: [TestController],
+  controllers: [TestController, QuestionController, QuestionPoolController],
   providers: [TestService],
   exports: [TestService],
 })

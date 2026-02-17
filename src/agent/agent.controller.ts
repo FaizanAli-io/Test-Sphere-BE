@@ -1,4 +1,4 @@
-import type { Response } from "express";
+import * as express from "express";
 import { AgentService } from "./agent.service";
 import {
   Res,
@@ -33,7 +33,7 @@ export class AgentController {
   @ApiOperation({ summary: "Stream agent completion (authenticated)" })
   @ApiResponse({ status: 200, description: "Stream started" })
   @ApiBody({ type: AgentDto })
-  async streamResponse(@Body() body: AgentDto, @Res() res: Response) {
+  async streamResponse(@Body() body: AgentDto, @Res() res: express.Response) {
     await this.agentService.streamCompletion(body.prompt, res);
   }
 
@@ -48,7 +48,7 @@ export class AgentController {
         prompt: {
           type: "string",
           example:
-            "Generate 10 mixed algebra questions for grade 9, including multiple choice, true/false, short and long answer types.",
+            "Generate 20 challenging algebra questions for university, including multiple choice, true/false, short and long answer types.",
         },
       },
       required: ["prompt"],

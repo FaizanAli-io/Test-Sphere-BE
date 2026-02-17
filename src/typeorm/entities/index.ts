@@ -1,0 +1,10 @@
+export { Class } from "./class.entity";
+export { User, UserRole } from "./user.entity";
+export { Test, TestStatus } from "./test.entity";
+export { QuestionPool } from "./question-pool.entity";
+export { StudentClass } from "./student-class.entity";
+export { Answer, GradingStatus } from "./answer.entity";
+export { Question, QuestionType } from "./question.entity";
+export { ProctoringLog, LogType } from "./proctoring-log.entity";
+export { Submission, SubmissionStatus } from "./submission.entity";
+export { ClassTeacher, ClassTeacherRole } from "./class-teacher.entity";

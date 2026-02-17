@@ -1,9 +1,9 @@
 import pdfParse from "pdf-parse";
 import { ConfigService } from "@config/config.service";
 import {
+  Logger,
   Injectable,
   BadRequestException,
-  Logger,
   ServiceUnavailableException,
 } from "@nestjs/common";
 

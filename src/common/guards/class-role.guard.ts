@@ -31,23 +31,19 @@ type entityType = Test | Question | Submission | QuestionPool;
 const CLASS_ID_SELECT = {
   test: {
     relations: { class: true },
-    select: { class: { id: true } },
-    extractClassId: (entity: entityType) => (entity as Test).class.id,
+    extractClassId: (entity: entityType) => (entity as Test).classId,
   },
   question: {
     relations: { test: { class: true } },
-    select: { test: { class: { id: true } } },
-    extractClassId: (entity: entityType) => (entity as Question).test.class.id,
+    extractClassId: (entity: entityType) => (entity as Question).test.classId,
   },
   submission: {
     relations: { test: { class: true } },
-    select: { test: { class: { id: true } } },
-    extractClassId: (entity: entityType) => (entity as Submission).test.class.id,
+    extractClassId: (entity: entityType) => (entity as Submission).test.classId,
   },
   questionPool: {
     relations: { test: { class: true } },
-    select: { test: { class: { id: true } } },
-    extractClassId: (entity: entityType) => (entity as QuestionPool).test.class.id,
+    extractClassId: (entity: entityType) => (entity as QuestionPool).test.classId,
   },
 };
 
@@ -62,7 +58,7 @@ export class ClassRoleGuard implements CanActivate {
     @InjectRepository(Submission)
     private submissionRepository: Repository<Submission>,
     @InjectRepository(QuestionPool)
-    private poolRepository: Repository<QuestionPool>,
+    private questionPoolRepository: Repository<QuestionPool>,
     @InjectRepository(ClassTeacher)
     private classTeacherRepository: Repository<ClassTeacher>,
   ) {}
@@ -89,30 +85,27 @@ export class ClassRoleGuard implements CanActivate {
       classId = Number(request.params?.classId ?? request.body?.classId);
       if (!classId) throw new BadRequestException("Class ID is required");
     } else {
-      const repoMap = {
+      const repoMap: Record<string, Repository<any>> = {
         test: this.testRepository,
         question: this.questionRepository,
         submission: this.submissionRepository,
-        questionPool: this.poolRepository,
+        questionPool: this.questionPoolRepository,
       };
 
-      const idParamMap = {
-        test: request.params?.testId,
-        question: request.params?.questionId,
-        submission: request.params?.submissionId,
-        questionPool: request.params?.poolId,
+      const paramKeyMap: Record<string, string> = {
+        test: "testId",
+        question: "questionId",
+        submission: "submissionId",
+        questionPool: "poolId",
       };
 
-      const { relations, select, extractClassId } = CLASS_ID_SELECT[mode];
+      const entityId = request.params[paramKeyMap[mode]];
+      if (!entityId) throw new BadRequestException(`${paramKeyMap[mode]} is required`);
 
-      const entity = await repoMap[mode].findOne({
-        where: { id: Number(idParamMap[mode]) },
-        relations,
-        select,
-      });
+      const { relations, extractClassId } = CLASS_ID_SELECT[mode];
+      const entity = await repoMap[mode].findOne({ where: { id: Number(entityId) }, relations });
 
       if (!entity) throw new NotFoundException(`${mode} not found`);
-
       classId = extractClassId(entity);
     }
 

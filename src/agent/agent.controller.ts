@@ -48,7 +48,7 @@ export class AgentController {
         prompt: {
           type: "string",
           example:
-            "Generate 10 mixed algebra questions for grade 9, including multiple choice, true/false, short and long answer types.",
+            "Generate 20 challenging algebra questions for university, including multiple choice, true/false, short and long answer types.",
         },
       },
       required: ["prompt"],

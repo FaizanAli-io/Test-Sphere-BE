@@ -263,7 +263,7 @@ export class TestService {
       .createQueryBuilder()
       .update()
       .set({ questionPoolId: poolId })
-      .where("id IN (:...ids) AND testId = :testId", { ids: questionIds, testId: pool.test.id })
+      .where("id IN (:...ids) AND testId = :testId", { ids: questionIds, testId: pool.testId })
       .execute();
 
     return { message: "Questions added to pool successfully", affected: result.affected || 0 };

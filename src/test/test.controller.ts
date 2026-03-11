@@ -27,6 +27,7 @@ import { ApiTags, ApiResponse, ApiOperation, ApiBearerAuth, ApiQuery } from "@ne
 
 import { TestMode } from "./test-mode.enum";
 import { TestService } from "./test.service";
+import { TestAnalyticsService } from "./test-analytics.service";
 import { UserRole, ClassTeacherRole } from "../typeorm/entities";
 
 import { JwtAuthGuard } from "../common/guards/jwt-auth.guard";
@@ -39,7 +40,10 @@ import { RequireClassRole } from "../common/decorators/class-roles.decorator";
 @Controller("tests")
 @UseGuards(JwtAuthGuard, ClassRoleGuard)
 export class TestController {
-  constructor(private readonly testService: TestService) {}
+  constructor(
+    private readonly testService: TestService,
+    private readonly testAnalyticsService: TestAnalyticsService,
+  ) {}
 
   @Post()
   @RequireClassRole(ClassTeacherRole.EDITOR)
@@ -96,6 +100,14 @@ export class TestController {
   @ApiResponse({ status: 200, description: "Students giving the test" })
   async getStudentsByTest(@Param("testId", ParseIntPipe) testId: number) {
     return this.testService.getStudentsByTestId(testId);
+  }
+
+  @Get(":testId/analytics")
+  @RequireClassRole(ClassTeacherRole.VIEWER, "test")
+  @ApiOperation({ summary: "Get analytics summary for a test (Viewer+)" })
+  @ApiResponse({ status: 200, description: "Test analytics data" })
+  async getTestAnalytics(@Param("testId", ParseIntPipe) testId: number) {
+    return this.testAnalyticsService.getTestAnalytics(testId);
   }
 }
 

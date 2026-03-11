@@ -15,7 +15,6 @@ import { Repository, DataSource } from "typeorm";
 import { InjectRepository } from "@nestjs/typeorm";
 import {
   Test,
-  Answer,
   Question,
   Submission,
   QuestionPool,

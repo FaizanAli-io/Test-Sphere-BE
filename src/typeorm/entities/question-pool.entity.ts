@@ -26,6 +26,9 @@ export class QuestionPool {
   @Column({ type: "json" })
   config: any;
 
+  @Column({ type: "boolean", default: true })
+  active: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 

@@ -29,6 +29,14 @@ export class TestAnalyticsService {
     // ── Pool-wise composition with marks breakdown ──
     const poolComposition = this.buildPoolComposition(questions, pools);
 
+    // ── Active pool overall aggregate (for overall analytics) ──
+    const activePools = pools.filter((p) => p.active !== false);
+    const activePoolIds = new Set(activePools.map((p) => p.id));
+    const activePoolQuestions = questions.filter(
+      (q) => q.questionPoolId && activePoolIds.has(q.questionPoolId),
+    );
+    const activeOverall = this.buildActivePoolOverall(activePoolQuestions, activePools);
+
     // ── Overall question type composition ──
     const composition = { MULTIPLE_CHOICE: 0, TRUE_FALSE: 0, SHORT_ANSWER: 0, LONG_ANSWER: 0 };
     for (const q of questions) {
@@ -48,6 +56,7 @@ export class TestAnalyticsService {
       return {
         questionComposition: { ...composition, total: questions.length },
         poolComposition,
+        activeOverall,
         performanceMetrics: {
           averageMarks: 0,
           averagePercentage: 0,
@@ -152,6 +161,7 @@ export class TestAnalyticsService {
     return {
       questionComposition: { ...composition, total: questions.length },
       poolComposition,
+      activeOverall,
       performanceMetrics: {
         averageMarks: avgMarks,
         averagePercentage: avgPercentage,
@@ -185,6 +195,7 @@ export class TestAnalyticsService {
       result.push({
         poolId: pool.id,
         poolTitle: pool.title,
+        active: pool.active !== false,
         totalQuestions: poolQuestions.length,
         selectedQuestions: Object.values(config).reduce((a, b) => a + (Number(b) || 0), 0),
         totalMarks: poolQuestions.reduce((a, q) => a + q.maxMarks, 0),
@@ -238,5 +249,44 @@ export class TestAnalyticsService {
     }
 
     return types;
+  }
+
+  private buildActivePoolOverall(questions: Question[], activePools: QuestionPool[]) {
+    // Aggregate: question types, selected counts per type, expected marks per type
+    const typeMap = new Map<
+      string,
+      { count: number; totalMarks: number; selectionCount: number }
+    >();
+
+    // Count all questions by type from active pools
+    for (const q of questions) {
+      const entry = typeMap.get(q.type) || { count: 0, totalMarks: 0, selectionCount: 0 };
+      entry.count++;
+      entry.totalMarks += q.maxMarks;
+      typeMap.set(q.type, entry);
+    }
+
+    // Sum selection counts from active pool configs
+    for (const pool of activePools) {
+      const config: Record<string, number> = pool.config || {};
+      for (const [type, count] of Object.entries(config)) {
+        const entry = typeMap.get(type) || { count: 0, totalMarks: 0, selectionCount: 0 };
+        entry.selectionCount += Number(count) || 0;
+        typeMap.set(type, entry);
+      }
+    }
+
+    const types = Array.from(typeMap.entries()).map(([type, data]) => {
+      const avgMarks = data.count > 0 ? Math.round((data.totalMarks / data.count) * 10) / 10 : 0;
+      const expectedMarks = Math.round(avgMarks * data.selectionCount * 10) / 10;
+      return { type, ...data, avgMarks, expectedMarks };
+    });
+
+    return {
+      totalQuestions: questions.length,
+      totalSelectedQuestions: types.reduce((a, t) => a + t.selectionCount, 0),
+      totalExpectedMarks: types.reduce((a, t) => a + t.expectedMarks, 0),
+      types,
+    };
   }
 }

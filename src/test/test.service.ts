@@ -10,7 +10,6 @@ import {
   UpdateQuestionPoolDto,
 } from "./test.dto";
 
-import { TestMode } from "./test-mode.enum";
 import { Repository, DataSource } from "typeorm";
 import { InjectRepository } from "@nestjs/typeorm";
 import {
@@ -110,7 +109,7 @@ export class TestService {
     return { message: "Test deleted successfully" };
   }
 
-  async getQuestionsByTestId(testId: number, role: UserRole, mode?: TestMode) {
+  async getQuestionsByTestId(testId: number, role: UserRole) {
     const test = await this.testRepository.findOne({
       where: { id: testId },
       select: { id: true },
@@ -137,26 +136,9 @@ export class TestService {
       });
     }
 
-    // Determine effective mode (default STATIC)
-    let effectiveMode: TestMode = TestMode.STATIC;
-    if (mode) {
-      if (mode === TestMode.POOL) effectiveMode = TestMode.POOL;
-      else if (mode === TestMode.STATIC) effectiveMode = TestMode.STATIC;
-      else throw new BadRequestException("Invalid mode");
-    }
-
-    // STATIC mode: include all questions
-    if (effectiveMode === TestMode.STATIC) {
-      return this.questionRepository.find({
-        where: { testId },
-        select: selectFields,
-        order: { id: "ASC" },
-      });
-    }
-
-    // POOL mode: select based on pools
+    // Students: select questions from active pools using the pooling engine
     const pools = await this.questionPoolRepository.find({
-      where: { testId },
+      where: { testId, active: true },
       select: { id: true, config: true },
     });
 

@@ -5,11 +5,9 @@ import {
   Delete,
   Body,
   Param,
-  Query,
   UseGuards,
   Controller,
   ParseIntPipe,
-  ParseEnumPipe,
 } from "@nestjs/common";
 
 import {
@@ -23,9 +21,8 @@ import {
   BulkQuestionPoolUpdateDto,
 } from "./test.dto";
 
-import { ApiTags, ApiResponse, ApiOperation, ApiBearerAuth, ApiQuery } from "@nestjs/swagger";
+import { ApiTags, ApiResponse, ApiOperation, ApiBearerAuth } from "@nestjs/swagger";
 
-import { TestMode } from "./test-mode.enum";
 import { TestService } from "./test.service";
 import { TestAnalyticsService } from "./test-analytics.service";
 import { UserRole, ClassTeacherRole } from "../typeorm/entities";
@@ -120,14 +117,12 @@ export class QuestionController {
 
   @Get(":testId/questions")
   @ApiOperation({ summary: "Get all questions for a test" })
-  @ApiQuery({ name: "mode", required: false, enum: TestMode })
   @ApiResponse({ status: 200, description: "Returns questions for a test" })
   async getQuestionsByTest(
     @Param("testId", ParseIntPipe) testId: number,
     @GetUser("role") userRole: UserRole,
-    @Query("mode", new ParseEnumPipe(TestMode)) mode?: TestMode,
   ) {
-    return this.testService.getQuestionsByTestId(testId, userRole, mode);
+    return this.testService.getQuestionsByTestId(testId, userRole);
   }
 
   @Post(":testId/questions")

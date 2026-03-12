@@ -142,6 +142,8 @@ function ValidateMetaByLogType(validationOptions?: ValidationOptions) {
               return value.every(
                 (item) => typeof item.key === "string" && typeof item.loggedAt === "string",
               );
+            case LogType.AI_INSIGHT:
+              return value.every((item) => typeof item === "object" && item !== null);
             default:
               return false;
           }

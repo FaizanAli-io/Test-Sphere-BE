@@ -248,6 +248,11 @@ export class CreateQuestionPoolDto {
   @IsObject()
   @Validate(IsValidPoolConfig)
   config: Record<string, number>;
+
+  @ApiProperty({ required: false, example: true, default: true })
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
 }
 
 export class UpdateQuestionPoolDto {
@@ -261,6 +266,11 @@ export class UpdateQuestionPoolDto {
   @IsObject()
   @Validate(IsValidPoolConfig)
   config?: Record<string, number>;
+
+  @ApiProperty({ required: false, example: true })
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
 }
 
 export class BulkQuestionPoolUpdateDto {

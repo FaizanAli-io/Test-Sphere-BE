@@ -7,6 +7,7 @@ export enum LogType {
   FOCUS_CHANGE = "FOCUS_CHANGE",
   MOUSECLICK = "MOUSECLICK",
   KEYSTROKE = "KEYSTROKE",
+  AI_INSIGHT = "AI_INSIGHT",
 }
 
 @Entity("proctoring_log")

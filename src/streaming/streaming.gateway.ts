@@ -60,6 +60,8 @@ export class StreamingGateway implements OnGatewayConnection, OnGatewayDisconnec
     { socketId: string; role: "student" | "teacher"; testId: number }
   >();
   private socketToUser = new Map<string, string>();
+  // Latest proctoring data per student for late-joining teachers
+  private latestProctoring = new Map<string, any>();
 
   handleConnection(client: Socket) {
     this.logger.log(`Client connected: ${client.id}`);
@@ -70,6 +72,7 @@ export class StreamingGateway implements OnGatewayConnection, OnGatewayDisconnec
     if (userId) {
       this.connectedUsers.delete(userId);
       this.socketToUser.delete(client.id);
+      this.latestProctoring.delete(userId);
       this.logger.log(`User disconnected: ${userId} (${client.id})`);
     } else {
       this.logger.log(`Client disconnected (unregistered): ${client.id}`);
@@ -159,6 +162,48 @@ export class StreamingGateway implements OnGatewayConnection, OnGatewayDisconnec
     );
 
     client.emit("active-sessions", { sessions });
+  }
+
+  // ─── AI Proctoring Relay ─────────────────────────────────────────────────
+
+  @SubscribeMessage("proctoring_update")
+  handleProctoringUpdate(
+    @MessageBody()
+    data: {
+      studentId: string;
+      score: number;
+      flags: string[];
+      gazeDelta: { x: number; y: number };
+      headPose: { pitch: number; yaw: number };
+      faceDetected: boolean;
+      timestamp: number;
+    },
+    @ConnectedSocket() client: Socket,
+  ) {
+    const user = this.connectedUsers.get(data.studentId);
+    if (!user) return;
+
+    // Store latest proctoring data for this student
+    this.latestProctoring.set(data.studentId, data);
+
+    // Broadcast to all teachers in the same test room
+    this.server.to(`teacher-${user.testId}`).emit("proctoring_data", data);
+  }
+
+  @SubscribeMessage("get-proctoring-snapshot")
+  handleGetProctoringSnapshot(
+    @MessageBody() data: { testId: number },
+    @ConnectedSocket() client: Socket,
+  ) {
+    // Send all latest proctoring data for a given test to the requesting teacher
+    const snapshot: any[] = [];
+    for (const [studentId, procData] of this.latestProctoring.entries()) {
+      const user = this.connectedUsers.get(studentId);
+      if (user && user.testId === data.testId) {
+        snapshot.push(procData);
+      }
+    }
+    client.emit("proctoring_snapshot", { students: snapshot });
   }
 
   private cleanupSessionsBySocketId(socketId: string) {

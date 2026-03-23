@@ -10,31 +10,31 @@ import {
   registerDecorator,
   ValidationOptions,
   ValidationArguments,
-} from "class-validator";
-import { Type } from "class-transformer";
-import { LogType } from "../typeorm/entities";
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { LogType } from '../typeorm/entities';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 // ===== Image-based logs (SCREENSHOT, WEBCAM_PHOTO) =====
 
 export class ImageLogEntry {
   @ApiProperty({
-    description: "ImageKit fileId for this uploaded image",
-    example: "670f8cd9f933d06b9ccf37b1",
+    description: 'ImageKit fileId for this uploaded image',
+    example: '670f8cd9f933d06b9ccf37b1',
   })
   @IsString()
   fileId: string;
 
   @ApiProperty({
-    description: "Public URL of the uploaded image",
-    example: "https://ik.imagekit.io/abcd/test-monitoring/webcam_123.jpg",
+    description: 'Public URL of the uploaded image',
+    example: 'https://ik.imagekit.io/abcd/test-monitoring/webcam_123.jpg',
   })
   @IsUrl()
   image: string;
 
   @ApiProperty({
-    description: "ISO timestamp when the image was taken",
-    example: "2025-10-10T12:30:45.000Z",
+    description: 'ISO timestamp when the image was taken',
+    example: '2025-10-10T12:30:45.000Z',
   })
   @IsDateString()
   takenAt: string;
@@ -44,15 +44,15 @@ export class ImageLogEntry {
 
 export class FocusChangeLogEntry {
   @ApiProperty({
-    description: "Duration in milliseconds that the user was away from the test window",
+    description: 'Duration in milliseconds that the user was away from the test window',
     example: 5000,
   })
   @IsNumber()
   duration: number;
 
   @ApiProperty({
-    description: "ISO timestamp when the focus was regained",
-    example: "2025-11-17T12:30:45.000Z",
+    description: 'ISO timestamp when the focus was regained',
+    example: '2025-11-17T12:30:45.000Z',
   })
   @IsDateString()
   loggedAt: string;
@@ -60,15 +60,15 @@ export class FocusChangeLogEntry {
 
 export class MouseClickLogEntry {
   @ApiProperty({
-    description: "Type of mouse button clicked",
-    enum: ["LEFT", "RIGHT"],
-    example: "LEFT",
+    description: 'Type of mouse button clicked',
+    enum: ['LEFT', 'RIGHT'],
+    example: 'LEFT',
   })
-  @IsIn(["LEFT", "RIGHT"])
-  type: "LEFT" | "RIGHT";
+  @IsIn(['LEFT', 'RIGHT'])
+  type: 'LEFT' | 'RIGHT';
 
   @ApiProperty({
-    description: "Screen coordinates [x, y] where the click occurred",
+    description: 'Screen coordinates [x, y] where the click occurred',
     example: [450, 320],
     type: [Number],
   })
@@ -77,8 +77,8 @@ export class MouseClickLogEntry {
   position: [number, number];
 
   @ApiProperty({
-    description: "ISO timestamp when the click occurred",
-    example: "2025-11-17T12:30:45.000Z",
+    description: 'ISO timestamp when the click occurred',
+    example: '2025-11-17T12:30:45.000Z',
   })
   @IsDateString()
   loggedAt: string;
@@ -86,15 +86,15 @@ export class MouseClickLogEntry {
 
 export class KeystrokeLogEntry {
   @ApiProperty({
-    description: "The key that was pressed",
-    example: "Enter",
+    description: 'The key that was pressed',
+    example: 'Enter',
   })
   @IsString()
   key: string;
 
   @ApiProperty({
-    description: "ISO timestamp when the keystroke occurred",
-    example: "2025-11-17T12:30:45.000Z",
+    description: 'ISO timestamp when the keystroke occurred',
+    example: '2025-11-17T12:30:45.000Z',
   })
   @IsDateString()
   loggedAt: string;
@@ -104,7 +104,7 @@ export class KeystrokeLogEntry {
 function ValidateMetaByLogType(validationOptions?: ValidationOptions) {
   return function (object: object, propertyName: string) {
     registerDecorator({
-      name: "validateMetaByLogType",
+      name: 'validateMetaByLogType',
       target: object.constructor,
       propertyName: propertyName,
       options: validationOptions,
@@ -122,28 +122,28 @@ function ValidateMetaByLogType(validationOptions?: ValidationOptions) {
             case LogType.WEBCAM_PHOTO:
               return value.every(
                 (item) =>
-                  typeof item.fileId === "string" &&
-                  typeof item.image === "string" &&
-                  typeof item.takenAt === "string",
+                  typeof item.fileId === 'string' &&
+                  typeof item.image === 'string' &&
+                  typeof item.takenAt === 'string',
               );
             case LogType.FOCUS_CHANGE:
               return value.every(
-                (item) => typeof item.duration === "number" && typeof item.loggedAt === "string",
+                (item) => typeof item.duration === 'number' && typeof item.loggedAt === 'string',
               );
             case LogType.MOUSECLICK:
               return value.every(
                 (item) =>
-                  (item.type === "LEFT" || item.type === "RIGHT") &&
+                  (item.type === 'LEFT' || item.type === 'RIGHT') &&
                   Array.isArray(item.position) &&
                   item.position.length === 2 &&
-                  typeof item.loggedAt === "string",
+                  typeof item.loggedAt === 'string',
               );
             case LogType.KEYSTROKE:
               return value.every(
-                (item) => typeof item.key === "string" && typeof item.loggedAt === "string",
+                (item) => typeof item.key === 'string' && typeof item.loggedAt === 'string',
               );
             case LogType.AI_INSIGHT:
-              return value.every((item) => typeof item === "object" && item !== null);
+              return value.every((item) => typeof item === 'object' && item !== null);
             default:
               return false;
           }
@@ -161,14 +161,14 @@ function ValidateMetaByLogType(validationOptions?: ValidationOptions) {
 
 export class CreateProctoringLogDto {
   @ApiProperty({
-    description: "ID of the submission this log belongs to",
+    description: 'ID of the submission this log belongs to',
     example: 42,
   })
   @IsInt()
   submissionId: number;
 
   @ApiProperty({
-    description: "Type of proctoring log",
+    description: 'Type of proctoring log',
     enum: LogType,
     example: LogType.SCREENSHOT,
   })
@@ -177,7 +177,7 @@ export class CreateProctoringLogDto {
 
   @ApiPropertyOptional({
     description:
-      "Metadata array that varies based on logType. For SCREENSHOT/WEBCAM_PHOTO: ImageLogEntry[], for FOCUS_CHANGE: FocusChangeLogEntry[], for MOUSECLICK: MouseClickLogEntry[], for KEYSTROKE: KeystrokeLogEntry[]",
+      'Metadata array that varies based on logType. For SCREENSHOT/WEBCAM_PHOTO: ImageLogEntry[], for FOCUS_CHANGE: FocusChangeLogEntry[], for MOUSECLICK: MouseClickLogEntry[], for KEYSTROKE: KeystrokeLogEntry[]',
   })
   @IsArray()
   @ValidateMetaByLogType()
@@ -186,7 +186,7 @@ export class CreateProctoringLogDto {
 
 export class CreateProctoringLogBatchDto {
   @ApiProperty({
-    description: "Array of proctoring logs to add",
+    description: 'Array of proctoring logs to add',
     type: [CreateProctoringLogDto],
   })
   @IsArray()

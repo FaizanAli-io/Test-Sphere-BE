@@ -1,13 +1,13 @@
-import { Module } from "@nestjs/common";
-import { JwtModule } from "@nestjs/jwt";
-import { TypeOrmModule } from "@nestjs/typeorm";
-import { ConfigService } from "@config/config.service";
+import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ConfigService } from '@config/config.service';
 
-import { AuthService } from "./auth.service";
-import { AuthController } from "./auth.controller";
-import { EmailModule } from "../email/email.module";
-import { JwtStrategy } from "./strategies/jwt.strategy";
-import { User } from "../typeorm/entities";
+import { AuthService } from './auth.service';
+import { AuthController } from './auth.controller';
+import { EmailModule } from '../email/email.module';
+import { JwtStrategy } from './strategies/jwt.strategy';
+import { User } from '../typeorm/entities';
 
 @Module({
   imports: [
@@ -16,9 +16,9 @@ import { User } from "../typeorm/entities";
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        secret: config.get<string>("JWT_SECRET"),
+        secret: config.get<string>('JWT_SECRET'),
         signOptions: {
-          expiresIn: "2h",
+          expiresIn: '2h',
         },
       }),
     }),

@@ -1,9 +1,9 @@
-import { Injectable, BadRequestException, ForbiddenException } from "@nestjs/common";
-import { Repository } from "typeorm";
-import { InjectRepository } from "@nestjs/typeorm";
-import { ProctoringLog, LogType, Submission } from "../typeorm/entities";
-import { UploadService } from "../upload/upload.service";
-import { CreateProctoringLogDto } from "./procotoring-log.dto";
+import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Repository } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import { ProctoringLog, LogType, Submission } from '../typeorm/entities';
+import { UploadService } from '../upload/upload.service';
+import { CreateProctoringLogDto } from './procotoring-log.dto';
 
 @Injectable()
 export class ProctoringLogService {
@@ -21,11 +21,11 @@ export class ProctoringLogService {
     });
 
     if (!submission || !submission.userId) {
-      throw new BadRequestException("Valid submission not found");
+      throw new BadRequestException('Valid submission not found');
     }
 
     if (submission.userId !== studentId) {
-      throw new ForbiddenException("You do not own this submission");
+      throw new ForbiddenException('You do not own this submission');
     }
 
     return submission;
@@ -97,7 +97,7 @@ export class ProctoringLogService {
     // Process each group
     const results = await Promise.all(
       Array.from(logGroups.entries()).map(async ([key, groupLogs]) => {
-        const [submissionId, logType] = key.split("-");
+        const [submissionId, logType] = key.split('-');
         const allMeta = groupLogs.flatMap((log) => (log.meta || []) as any[]);
 
         const existing = await this.proctoringLogRepository.findOne({

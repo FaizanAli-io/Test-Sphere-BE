@@ -8,18 +8,18 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   PrimaryGeneratedColumn,
-} from "typeorm";
-import { User, Question, Submission } from ".";
+} from 'typeorm';
+import { User, Question, Submission } from '.';
 
 export enum GradingStatus {
-  AUTOMATIC = "AUTOMATIC",
-  PENDING = "PENDING",
-  GRADED = "GRADED",
+  AUTOMATIC = 'AUTOMATIC',
+  PENDING = 'PENDING',
+  GRADED = 'GRADED',
 }
 
-@Entity("answer")
-@Index(["submissionId"])
-@Unique(["studentId", "questionId"])
+@Entity('answer')
+@Index(['submissionId'])
+@Unique(['studentId', 'questionId'])
 export class Answer {
   @PrimaryGeneratedColumn()
   id: number;
@@ -33,14 +33,14 @@ export class Answer {
   @Column()
   submissionId: number;
 
-  @Column({ type: "text", nullable: true })
+  @Column({ type: 'text', nullable: true })
   answer: string | null;
 
-  @Column({ type: "int", nullable: true })
+  @Column({ type: 'int', nullable: true })
   obtainedMarks: number | null;
 
   @Column({
-    type: "enum",
+    type: 'enum',
     enum: GradingStatus,
     default: GradingStatus.PENDING,
   })
@@ -53,20 +53,20 @@ export class Answer {
   updatedAt: Date;
 
   @ManyToOne(() => User, (user) => user.answers, {
-    onDelete: "CASCADE",
+    onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: "studentId" })
+  @JoinColumn({ name: 'studentId' })
   student: User;
 
   @ManyToOne(() => Question, (question) => question.answers, {
-    onDelete: "CASCADE",
+    onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: "questionId" })
+  @JoinColumn({ name: 'questionId' })
   question: Question;
 
   @ManyToOne(() => Submission, (submission) => submission.answers, {
-    onDelete: "CASCADE",
+    onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: "submissionId" })
+  @JoinColumn({ name: 'submissionId' })
   submission: Submission;
 }

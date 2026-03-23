@@ -1,13 +1,13 @@
-import { Column, Entity, ManyToOne, JoinColumn, PrimaryColumn, CreateDateColumn } from "typeorm";
-import { User, Class } from ".";
+import { Column, Entity, ManyToOne, JoinColumn, PrimaryColumn, CreateDateColumn } from 'typeorm';
+import { User, Class } from '.';
 
 export enum ClassTeacherRole {
-  OWNER = "OWNER",
-  EDITOR = "EDITOR",
-  VIEWER = "VIEWER",
+  OWNER = 'OWNER',
+  EDITOR = 'EDITOR',
+  VIEWER = 'VIEWER',
 }
 
-@Entity("class_teacher")
+@Entity('class_teacher')
 export class ClassTeacher {
   @PrimaryColumn()
   teacherId: number;
@@ -16,7 +16,7 @@ export class ClassTeacher {
   classId: number;
 
   @Column({
-    type: "enum",
+    type: 'enum',
     enum: ClassTeacherRole,
   })
   role: ClassTeacherRole;
@@ -25,14 +25,14 @@ export class ClassTeacher {
   assignedAt: Date;
 
   @ManyToOne(() => User, (user) => user.classTeachers, {
-    onDelete: "CASCADE",
+    onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: "teacherId" })
+  @JoinColumn({ name: 'teacherId' })
   teacher: User;
 
   @ManyToOne(() => Class, (cls) => cls.teachers, {
-    onDelete: "CASCADE",
+    onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: "classId" })
+  @JoinColumn({ name: 'classId' })
   class: Class;
 }

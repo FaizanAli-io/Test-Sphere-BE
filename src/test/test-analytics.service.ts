@@ -1,7 +1,7 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, DataSource, Not } from "typeorm";
-import { Test, Question, QuestionPool, Submission, SubmissionStatus } from "../typeorm/entities";
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, DataSource, Not } from 'typeorm';
+import { Test, Question, QuestionPool, Submission, SubmissionStatus } from '../typeorm/entities';
 
 @Injectable()
 export class TestAnalyticsService {
@@ -20,7 +20,7 @@ export class TestAnalyticsService {
       where: { id: testId },
       relations: { questions: true, questionPools: true },
     });
-    if (!test) throw new NotFoundException("Test not found.");
+    if (!test) throw new NotFoundException('Test not found.');
 
     const questions = test.questions;
     const pools = test.questionPools;
@@ -47,7 +47,7 @@ export class TestAnalyticsService {
     const submissions = await this.dataSource.getRepository(Submission).find({
       where: { testId, status: Not(SubmissionStatus.IN_PROGRESS) },
       relations: { answers: { question: true } },
-      order: { submittedAt: "ASC" },
+      order: { submittedAt: 'ASC' },
     });
 
     const n = submissions.length;
@@ -60,7 +60,7 @@ export class TestAnalyticsService {
         performanceMetrics: {
           averageMarks: 0,
           averagePercentage: 0,
-          averageGrade: "N/A",
+          averageGrade: 'N/A',
           averageDurationMinutes: 0,
           totalSubmissions: 0,
           totalMarksPerTest,
@@ -101,12 +101,12 @@ export class TestAnalyticsService {
         : 0;
 
     const gradeFromPct = (pct: number) => {
-      if (pct >= 90) return "A+";
-      if (pct >= 80) return "A";
-      if (pct >= 70) return "B";
-      if (pct >= 60) return "C";
-      if (pct >= 50) return "D";
-      return "F";
+      if (pct >= 90) return 'A+';
+      if (pct >= 80) return 'A';
+      if (pct >= 70) return 'B';
+      if (pct >= 60) return 'C';
+      if (pct >= 50) return 'D';
+      return 'F';
     };
 
     // Score distribution (10 × 10% buckets)
@@ -210,7 +210,7 @@ export class TestAnalyticsService {
       const types = this.buildTypeBreakdown(ungrouped, null);
       result.push({
         poolId: null,
-        poolTitle: "General Questions",
+        poolTitle: 'General Questions',
         totalQuestions: ungrouped.length,
         selectedQuestions: ungrouped.length,
         totalMarks: ungrouped.reduce((a, q) => a + q.maxMarks, 0),

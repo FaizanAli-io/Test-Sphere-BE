@@ -12,39 +12,39 @@ import {
   ValidateIf,
   ValidateNested,
   ArrayNotEmpty,
-} from "class-validator";
-import { ApiProperty } from "@nestjs/swagger";
-import { Type, Transform } from "class-transformer";
-import { TestStatus, QuestionType } from "../typeorm/entities";
-import { IsValidPoolConfig } from "./validators/pool-config.validator";
+} from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { Type, Transform } from 'class-transformer';
+import { TestStatus, QuestionType } from '../typeorm/entities';
+import { IsValidPoolConfig } from './validators/pool-config.validator';
 
 export class CreateTestDto {
   @ApiProperty({ example: 12 })
   @IsInt()
   classId: number;
 
-  @ApiProperty({ example: "Midterm Algebra Test" })
+  @ApiProperty({ example: 'Midterm Algebra Test' })
   @IsString()
   title: string;
 
   @ApiProperty({
     required: false,
-    example: "Covers chapters 1-5 on linear equations",
+    example: 'Covers chapters 1-5 on linear equations',
   })
   @IsOptional()
   @IsString()
   description?: string;
 
-  @ApiProperty({ example: 90, description: "Duration in minutes" })
+  @ApiProperty({ example: 90, description: 'Duration in minutes' })
   @IsInt()
   @Min(1)
   duration: number;
 
-  @ApiProperty({ example: "2025-10-10T09:00:00.000Z" })
+  @ApiProperty({ example: '2025-10-10T09:00:00.000Z' })
   @IsDateString()
   startAt: string;
 
-  @ApiProperty({ example: "2025-10-10T10:30:00.000Z" })
+  @ApiProperty({ example: '2025-10-10T10:30:00.000Z' })
   @IsDateString()
   endAt: string;
 
@@ -59,12 +59,12 @@ export class CreateTestDto {
 }
 
 export class UpdateTestDto {
-  @ApiProperty({ required: false, example: "Updated Algebra Midterm Title" })
+  @ApiProperty({ required: false, example: 'Updated Algebra Midterm Title' })
   @IsOptional()
   @IsString()
   title?: string;
 
-  @ApiProperty({ required: false, example: "Now includes chapter 6" })
+  @ApiProperty({ required: false, example: 'Now includes chapter 6' })
   @IsOptional()
   @IsString()
   description?: string;
@@ -74,12 +74,12 @@ export class UpdateTestDto {
   @IsInt()
   duration?: number;
 
-  @ApiProperty({ required: false, example: "2025-10-10T09:15:00.000Z" })
+  @ApiProperty({ required: false, example: '2025-10-10T09:15:00.000Z' })
   @IsOptional()
   @IsDateString()
   startAt?: string;
 
-  @ApiProperty({ required: false, example: "2025-10-10T10:45:00.000Z" })
+  @ApiProperty({ required: false, example: '2025-10-10T10:45:00.000Z' })
   @IsOptional()
   @IsDateString()
   endAt?: string;
@@ -100,7 +100,7 @@ export class CreateQuestionDto {
   @IsInt()
   questionPoolId?: number;
 
-  @ApiProperty({ example: "What is the derivative of x^2?" })
+  @ApiProperty({ example: 'What is the derivative of x^2?' })
   @IsString()
   text: string;
 
@@ -111,8 +111,8 @@ export class CreateQuestionDto {
   @ApiProperty({
     type: [String],
     required: false,
-    description: "Required only for MULTIPLE_CHOICE questions",
-    example: ["2x", "x", "x^2", "2"],
+    description: 'Required only for MULTIPLE_CHOICE questions',
+    example: ['2x', 'x', 'x^2', '2'],
   })
   @ValidateIf((o) => o.type === QuestionType.MULTIPLE_CHOICE)
   @IsArray()
@@ -120,7 +120,7 @@ export class CreateQuestionDto {
 
   @ApiProperty({
     required: false,
-    description: "Required for MULTIPLE_CHOICE and TRUE_FALSE questions",
+    description: 'Required for MULTIPLE_CHOICE and TRUE_FALSE questions',
     example: 0,
   })
   @ValidateIf((o) => o.type === QuestionType.MULTIPLE_CHOICE || o.type === QuestionType.TRUE_FALSE)
@@ -135,7 +135,7 @@ export class CreateQuestionDto {
 
   @ApiProperty({
     required: false,
-    example: "https://cdn.example.com/images/derivative-q1.png",
+    example: 'https://cdn.example.com/images/derivative-q1.png',
   })
   @IsOptional()
   @IsString()
@@ -143,7 +143,7 @@ export class CreateQuestionDto {
 }
 
 export class UpdateQuestionDto {
-  @ApiProperty({ required: false, example: "What is the derivative of x^3?" })
+  @ApiProperty({ required: false, example: 'What is the derivative of x^3?' })
   @IsOptional()
   @IsString()
   text?: string;
@@ -160,8 +160,8 @@ export class UpdateQuestionDto {
   @ApiProperty({
     required: false,
     type: [String],
-    description: "Required only if type is MULTIPLE_CHOICE",
-    example: ["True", "False"],
+    description: 'Required only if type is MULTIPLE_CHOICE',
+    example: ['True', 'False'],
   })
   @ValidateIf((o) => o.type === QuestionType.MULTIPLE_CHOICE)
   @IsArray()
@@ -169,7 +169,7 @@ export class UpdateQuestionDto {
 
   @ApiProperty({
     required: false,
-    description: "Applicable only for MULTIPLE_CHOICE or TRUE_FALSE questions",
+    description: 'Applicable only for MULTIPLE_CHOICE or TRUE_FALSE questions',
     example: 1,
   })
   @ValidateIf((o) => o.type === QuestionType.MULTIPLE_CHOICE || o.type === QuestionType.TRUE_FALSE)
@@ -188,7 +188,7 @@ export class UpdateQuestionDto {
 
   @ApiProperty({
     required: false,
-    example: "https://cdn.example.com/images/derivative-q2.png",
+    example: 'https://cdn.example.com/images/derivative-q2.png',
   })
   @IsOptional()
   @IsString()
@@ -200,13 +200,13 @@ export class AddQuestionsDto {
     type: [CreateQuestionDto],
     example: [
       {
-        text: "What is the derivative of x^2?",
-        type: "MULTIPLE_CHOICE",
-        options: ["2x", "x", "x^2", "2"],
+        text: 'What is the derivative of x^2?',
+        type: 'MULTIPLE_CHOICE',
+        options: ['2x', 'x', 'x^2', '2'],
         correctAnswer: 0,
         maxMarks: 5,
         questionPoolId: 1,
-        image: "https://cdn.example.com/images/derivative-q1.png",
+        image: 'https://cdn.example.com/images/derivative-q1.png',
       },
     ],
   })
@@ -240,7 +240,7 @@ export class UpdateTestConfigDto {
 }
 
 export class CreateQuestionPoolDto {
-  @ApiProperty({ example: "Algebra MCQs" })
+  @ApiProperty({ example: 'Algebra MCQs' })
   @IsString()
   title: string;
 
@@ -256,7 +256,7 @@ export class CreateQuestionPoolDto {
 }
 
 export class UpdateQuestionPoolDto {
-  @ApiProperty({ required: false, example: "Algebra MCQs (updated)" })
+  @ApiProperty({ required: false, example: 'Algebra MCQs (updated)' })
   @IsOptional()
   @IsString()
   title?: string;
@@ -274,7 +274,7 @@ export class UpdateQuestionPoolDto {
 }
 
 export class BulkQuestionPoolUpdateDto {
-  @ApiProperty({ example: [1, 2, 3], description: "One ID or an array of IDs" })
+  @ApiProperty({ example: [1, 2, 3], description: 'One ID or an array of IDs' })
   @Transform(({ value }) => (Array.isArray(value) ? value : [value]))
   @IsArray()
   @ArrayNotEmpty()

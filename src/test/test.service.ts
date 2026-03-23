@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 
 import {
   CreateTestDto,
@@ -8,10 +8,10 @@ import {
   UpdateTestConfigDto,
   CreateQuestionPoolDto,
   UpdateQuestionPoolDto,
-} from "./test.dto";
+} from './test.dto';
 
-import { Repository, DataSource } from "typeorm";
-import { InjectRepository } from "@nestjs/typeorm";
+import { Repository, DataSource } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
 import {
   Test,
   Question,
@@ -19,7 +19,7 @@ import {
   QuestionPool,
   SubmissionStatus,
   UserRole,
-} from "../typeorm/entities";
+} from '../typeorm/entities';
 
 @Injectable()
 export class TestService {
@@ -35,7 +35,7 @@ export class TestService {
 
   private validateDates(startAt?: string, endAt?: string) {
     if (startAt && endAt && new Date(startAt) >= new Date(endAt)) {
-      throw new BadRequestException("End date must be after start date.");
+      throw new BadRequestException('End date must be after start date.');
     }
   }
 
@@ -63,14 +63,14 @@ export class TestService {
       relations: { questions: true },
     });
 
-    if (!test) throw new NotFoundException("Test not found.");
+    if (!test) throw new NotFoundException('Test not found.');
     return test;
   }
 
   async getTestsByClassId(classId: number) {
     return this.testRepository.find({
       where: { classId },
-      order: { createdAt: "DESC" },
+      order: { createdAt: 'DESC' },
     });
   }
 
@@ -78,7 +78,7 @@ export class TestService {
     this.validateDates(dto.startAt, dto.endAt);
 
     const test = await this.testRepository.findOne({ where: { id } });
-    if (!test) throw new NotFoundException("Test not found.");
+    if (!test) throw new NotFoundException('Test not found.');
 
     const parseDate = (date?: string) => (date ? new Date(date) : undefined);
 
@@ -97,7 +97,7 @@ export class TestService {
       select: { id: true, classId: true, config: true },
     });
 
-    if (!test) throw new NotFoundException("Test not found");
+    if (!test) throw new NotFoundException('Test not found');
 
     test.config = { ...(test.config as Record<string, any>), ...dto };
 
@@ -106,7 +106,7 @@ export class TestService {
 
   async deleteTest(id: number) {
     await this.dataSource.manager.delete(Test, { id });
-    return { message: "Test deleted successfully" };
+    return { message: 'Test deleted successfully' };
   }
 
   async getQuestionsByTestId(testId: number, role: UserRole) {
@@ -115,7 +115,7 @@ export class TestService {
       select: { id: true },
     });
 
-    if (!test) throw new NotFoundException("Test not found.");
+    if (!test) throw new NotFoundException('Test not found.');
 
     const selectFields: Partial<Record<keyof Question, true>> = {
       id: true,
@@ -132,7 +132,7 @@ export class TestService {
       return this.questionRepository.find({
         where: { testId },
         select: selectFields,
-        order: { id: "ASC" },
+        order: { id: 'ASC' },
       });
     }
 
@@ -190,7 +190,7 @@ export class TestService {
 
   async updateQuestion(id: number, dto: UpdateQuestionDto) {
     const question = await this.questionRepository.findOne({ where: { id } });
-    if (!question) throw new NotFoundException("Question not found.");
+    if (!question) throw new NotFoundException('Question not found.');
     Object.assign(question, dto);
 
     return this.questionRepository.save(question);
@@ -203,13 +203,13 @@ export class TestService {
   async getQuestionPoolsByTestId(testId: number) {
     return this.questionPoolRepository.find({
       where: { testId },
-      order: { id: "ASC" },
+      order: { id: 'ASC' },
     });
   }
 
   async getQuestionPoolById(id: number) {
     const pool = await this.questionPoolRepository.findOne({ where: { id } });
-    if (!pool) throw new NotFoundException("Question pool not found.");
+    if (!pool) throw new NotFoundException('Question pool not found.');
     return pool;
   }
 
@@ -237,33 +237,33 @@ export class TestService {
     const pool = await this.getQuestionPoolById(poolId);
 
     if (!questionIds || !questionIds.length)
-      throw new BadRequestException("questionIds is required");
+      throw new BadRequestException('questionIds is required');
 
     // Only update questions that belong to the same test
     const result = await this.questionRepository
       .createQueryBuilder()
       .update()
       .set({ questionPoolId: poolId })
-      .where("id IN (:...ids) AND testId = :testId", { ids: questionIds, testId: pool.testId })
+      .where('id IN (:...ids) AND testId = :testId', { ids: questionIds, testId: pool.testId })
       .execute();
 
-    return { message: "Questions added to pool successfully", affected: result.affected || 0 };
+    return { message: 'Questions added to pool successfully', affected: result.affected || 0 };
   }
 
   async removeQuestionsFromPool(poolId: number, questionIds: number[]) {
     await this.getQuestionPoolById(poolId);
 
     if (!questionIds || !questionIds.length)
-      throw new BadRequestException("questionIds is required");
+      throw new BadRequestException('questionIds is required');
 
     const result = await this.questionRepository
       .createQueryBuilder()
       .update()
       .set({ questionPoolId: null })
-      .where("id IN (:...ids) AND questionPoolId = :poolId", { ids: questionIds, poolId })
+      .where('id IN (:...ids) AND questionPoolId = :poolId', { ids: questionIds, poolId })
       .execute();
 
-    return { message: "Questions removed from pool successfully", affected: result.affected || 0 };
+    return { message: 'Questions removed from pool successfully', affected: result.affected || 0 };
   }
 
   async getStudentsByTestId(testId: number) {

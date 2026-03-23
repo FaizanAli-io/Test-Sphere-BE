@@ -312,12 +312,12 @@ Use `class-validator` decorators on all DTO properties:
 Use NestJS built-in HTTP exceptions:
 
 ```typescript
-throw new NotFoundException("User not found");
-throw new BadRequestException("Invalid OTP");
-throw new ConflictException("Email already registered");
-throw new ForbiddenException("Access denied: insufficient role");
-throw new UnauthorizedException("Invalid credentials");
-throw new ServiceUnavailableException("API key not configured");
+throw new NotFoundException('User not found');
+throw new BadRequestException('Invalid OTP');
+throw new ConflictException('Email already registered');
+throw new ForbiddenException('Access denied: insufficient role');
+throw new UnauthorizedException('Invalid credentials');
+throw new ServiceUnavailableException('API key not configured');
 ```
 
 ### Swagger Documentation

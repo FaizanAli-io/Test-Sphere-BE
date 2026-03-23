@@ -1,7 +1,7 @@
-import { Entity, Column, ManyToOne, PrimaryColumn, JoinColumn, CreateDateColumn } from "typeorm";
-import { User, Class } from ".";
+import { Entity, Column, ManyToOne, PrimaryColumn, JoinColumn, CreateDateColumn } from 'typeorm';
+import { User, Class } from '.';
 
-@Entity("student_class")
+@Entity('student_class')
 export class StudentClass {
   @PrimaryColumn()
   studentId: number;
@@ -16,14 +16,14 @@ export class StudentClass {
   joinedAt: Date;
 
   @ManyToOne(() => User, (user) => user.studentClasses, {
-    onDelete: "CASCADE",
+    onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: "studentId" })
+  @JoinColumn({ name: 'studentId' })
   student: User;
 
   @ManyToOne(() => Class, (cls) => cls.students, {
-    onDelete: "CASCADE",
+    onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: "classId" })
+  @JoinColumn({ name: 'classId' })
   class: Class;
 }

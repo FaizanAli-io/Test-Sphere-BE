@@ -1,13 +1,13 @@
-import pdfParse from "pdf-parse";
-import { ConfigService } from "@config/config.service";
+import pdfParse from 'pdf-parse';
+import { ConfigService } from '@config/config.service';
 import {
   Logger,
   Injectable,
   BadRequestException,
   ServiceUnavailableException,
-} from "@nestjs/common";
+} from '@nestjs/common';
 
-import { generateStructuredQuestions } from "./question-helpers";
+import { generateStructuredQuestions } from './question-helpers';
 
 @Injectable()
 export class AgentService {
@@ -16,43 +16,43 @@ export class AgentService {
   private readonly logger = new Logger(AgentService.name);
 
   constructor(private config: ConfigService) {
-    this.apiKey = this.config.get<string>("OPENROUTER_API_KEY") ?? "";
+    this.apiKey = this.config.get<string>('OPENROUTER_API_KEY') ?? '';
     this.systemPrompt = `You are Prep Guru, an AI assistant and agent of the Test Sphere website. Your job is to help students with exam preparation: explain concepts clearly, provide study tips, suggest practice problems, and give guidance on revision strategies. You are strictly an educational bot for exam preparation and must not respond to requests outside of that scope. If a user asks something unrelated (political, medical, legal, personal advice beyond study tips, etc.), politely refuse and steer them back to exam-prep context.`;
   }
 
   private getApiKey(): string {
     if (this.apiKey) return this.apiKey;
 
-    this.logger.error("OpenRouter API key is missing from configuration");
-    throw new ServiceUnavailableException("OpenRouter API key is not configured");
+    this.logger.error('OpenRouter API key is missing from configuration');
+    throw new ServiceUnavailableException('OpenRouter API key is not configured');
   }
 
   async streamCompletion(prompt: string, res: any) {
     const apiKey = this.getApiKey();
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         stream: true,
-        model: "gpt-4o-mini",
+        model: 'gpt-4o-mini',
         messages: [
-          { role: "system", content: this.systemPrompt },
-          { role: "user", content: prompt },
+          { role: 'system', content: this.systemPrompt },
+          { role: 'user', content: prompt },
         ],
       }),
     });
 
     if (!response.body) {
-      res.status(500).send("No response stream");
+      res.status(500).send('No response stream');
       return;
     }
 
-    res.setHeader("Content-Type", "text/event-stream");
-    res.setHeader("Cache-Control", "no-cache");
-    res.setHeader("Connection", "keep-alive");
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
@@ -83,7 +83,7 @@ export class AgentService {
       const text = data.text.trim();
 
       if (!text || text.length < 50) {
-        throw new BadRequestException("PDF text is too short or empty.");
+        throw new BadRequestException('PDF text is too short or empty.');
       }
 
       const prompt = `Generate questions based on the following content extracted from a PDF:\n\n${text}`;
@@ -94,8 +94,8 @@ export class AgentService {
         questions: questions.questions,
       };
     } catch (error) {
-      this.logger.error("PDF parsing error:", (error as Error)?.message);
-      throw new BadRequestException("Failed to read or process the uploaded PDF.");
+      this.logger.error('PDF parsing error:', (error as Error)?.message);
+      throw new BadRequestException('Failed to read or process the uploaded PDF.');
     }
   }
 }

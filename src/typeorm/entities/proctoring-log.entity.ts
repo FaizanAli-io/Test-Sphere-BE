@@ -1,18 +1,18 @@
-import { Index, Column, Entity, ManyToOne, JoinColumn, PrimaryGeneratedColumn } from "typeorm";
-import { Submission } from ".";
+import { Index, Column, Entity, ManyToOne, JoinColumn, PrimaryGeneratedColumn } from 'typeorm';
+import { Submission } from '.';
 
 export enum LogType {
-  SCREENSHOT = "SCREENSHOT",
-  WEBCAM_PHOTO = "WEBCAM_PHOTO",
-  FOCUS_CHANGE = "FOCUS_CHANGE",
-  MOUSECLICK = "MOUSECLICK",
-  KEYSTROKE = "KEYSTROKE",
-  AI_INSIGHT = "AI_INSIGHT",
+  SCREENSHOT = 'SCREENSHOT',
+  WEBCAM_PHOTO = 'WEBCAM_PHOTO',
+  FOCUS_CHANGE = 'FOCUS_CHANGE',
+  MOUSECLICK = 'MOUSECLICK',
+  KEYSTROKE = 'KEYSTROKE',
+  AI_INSIGHT = 'AI_INSIGHT',
 }
 
-@Entity("proctoring_log")
-@Index(["submissionId"])
-@Index(["logType"])
+@Entity('proctoring_log')
+@Index(['submissionId'])
+@Index(['logType'])
 export class ProctoringLog {
   @PrimaryGeneratedColumn()
   id: number;
@@ -20,18 +20,18 @@ export class ProctoringLog {
   @Column()
   submissionId: number;
 
-  @Column({ type: "json", nullable: true })
+  @Column({ type: 'json', nullable: true })
   meta: any;
 
   @Column({
-    type: "enum",
+    type: 'enum',
     enum: LogType,
   })
   logType: LogType;
 
   @ManyToOne(() => Submission, (submission) => submission.logs, {
-    onDelete: "CASCADE",
+    onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: "submissionId" })
+  @JoinColumn({ name: 'submissionId' })
   submission: Submission;
 }

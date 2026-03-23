@@ -8,11 +8,11 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   PrimaryGeneratedColumn,
-} from "typeorm";
-import { Test, Question } from ".";
+} from 'typeorm';
+import { Test, Question } from '.';
 
-@Entity("question_pool")
-@Index(["testId"])
+@Entity('question_pool')
+@Index(['testId'])
 export class QuestionPool {
   @PrimaryGeneratedColumn()
   id: number;
@@ -20,13 +20,13 @@ export class QuestionPool {
   @Column()
   testId: number;
 
-  @Column({ type: "varchar", length: 255 })
+  @Column({ type: 'varchar', length: 255 })
   title: string;
 
-  @Column({ type: "json" })
+  @Column({ type: 'json' })
   config: any;
 
-  @Column({ type: "boolean", default: true })
+  @Column({ type: 'boolean', default: true })
   active: boolean;
 
   @CreateDateColumn()
@@ -35,8 +35,8 @@ export class QuestionPool {
   @UpdateDateColumn()
   updatedAt: Date;
 
-  @ManyToOne(() => Test, (test) => test.questionPools, { onDelete: "CASCADE" })
-  @JoinColumn({ name: "testId" })
+  @ManyToOne(() => Test, (test) => test.questionPools, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'testId' })
   test: Test;
 
   @OneToMany(() => Question, (question) => question.questionPool)

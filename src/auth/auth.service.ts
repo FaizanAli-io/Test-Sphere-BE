@@ -4,7 +4,7 @@ import {
   NotFoundException,
   BadRequestException,
   UnauthorizedException,
-} from "@nestjs/common";
+} from '@nestjs/common';
 
 import {
   LoginDto,
@@ -13,16 +13,16 @@ import {
   UpdateProfileDto,
   ResetPasswordDto,
   ForgotPasswordDto,
-} from "./auth.dto";
+} from './auth.dto';
 
-import bcrypt from "bcryptjs";
-import { Repository } from "typeorm";
+import bcrypt from 'bcryptjs';
+import { Repository } from 'typeorm';
 
-import { JwtService } from "@nestjs/jwt";
-import { InjectRepository } from "@nestjs/typeorm";
+import { JwtService } from '@nestjs/jwt';
+import { InjectRepository } from '@nestjs/typeorm';
 
-import { User } from "../typeorm/entities";
-import { EmailService } from "../email/email.service";
+import { User } from '../typeorm/entities';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class AuthService {
@@ -72,7 +72,7 @@ export class AuthService {
         const updatedUser = await this.userRepository.save(existingUser);
 
         return {
-          message: "Password linked successfully. You can now log in with email or Google.",
+          message: 'Password linked successfully. You can now log in with email or Google.',
           ...(await this.buildAuthResponse(updatedUser)),
         };
       }
@@ -84,22 +84,22 @@ export class AuthService {
         const updatedUser = await this.userRepository.save(existingUser);
 
         return {
-          message: "Google account linked successfully. You can now log in with email or Google.",
+          message: 'Google account linked successfully. You can now log in with email or Google.',
           ...(await this.buildAuthResponse(updatedUser)),
         };
       }
 
       // --- Conflicts ---
       if (existingUser.verified)
-        throw new ConflictException("Account already registered and verified.");
+        throw new ConflictException('Account already registered and verified.');
 
       if (existingUser.firebaseId && dto.firebaseId)
-        throw new ConflictException("Account already exists and linked to Google login.");
+        throw new ConflictException('Account already exists and linked to Google login.');
 
       if (existingUser.password && dto.password)
-        throw new ConflictException("Account already exists and linked to password login.");
+        throw new ConflictException('Account already exists and linked to password login.');
 
-      throw new ConflictException("Account already registered but not verified.");
+      throw new ConflictException('Account already registered but not verified.');
     }
 
     // --- Ensure CNIC is unique ---
@@ -108,7 +108,7 @@ export class AuthService {
         where: { cnic: dto.cnic },
         select: { id: true },
       });
-      if (cnicUser) throw new ConflictException("CNIC is already registered.");
+      if (cnicUser) throw new ConflictException('CNIC is already registered.');
     }
 
     // --- Google signup ---
@@ -126,13 +126,13 @@ export class AuthService {
       const savedUser = await this.userRepository.save(user);
 
       return {
-        message: "Signup successful via Google. Account verified.",
+        message: 'Signup successful via Google. Account verified.',
         ...(await this.buildAuthResponse(savedUser)),
       };
     }
 
     // --- Email signup ---
-    if (!dto.password) throw new BadRequestException("Password is required for email signup.");
+    if (!dto.password) throw new BadRequestException('Password is required for email signup.');
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
     const otp = this.generateOtp();
@@ -153,7 +153,7 @@ export class AuthService {
     await this.emailService.sendOtpEmail(createdUser.email, otp);
 
     return {
-      message: "Signup successful. OTP sent to email for verification.",
+      message: 'Signup successful. OTP sent to email for verification.',
     };
   }
 
@@ -163,9 +163,9 @@ export class AuthService {
       select: { id: true, email: true, verified: true },
     });
 
-    if (!user) throw new NotFoundException("User not found");
+    if (!user) throw new NotFoundException('User not found');
 
-    if (user.verified) throw new BadRequestException("Account is already verified.");
+    if (user.verified) throw new BadRequestException('Account is already verified.');
 
     const otp = this.generateOtp();
 
@@ -176,7 +176,7 @@ export class AuthService {
     await this.emailService.sendOtpEmail(user.email, otp);
 
     return {
-      message: "OTP resent successfully. Check your email.",
+      message: 'OTP resent successfully. Check your email.',
       otpResent: true,
     };
   }
@@ -186,13 +186,13 @@ export class AuthService {
       where: { email: dto.email },
     });
 
-    if (!user) throw new NotFoundException("User not found");
+    if (!user) throw new NotFoundException('User not found');
 
-    if (user.verified) throw new BadRequestException("Account is already verified.");
+    if (user.verified) throw new BadRequestException('Account is already verified.');
 
-    if (!user.otp || !user.otpExpiry) throw new BadRequestException("No OTP generated");
+    if (!user.otp || !user.otpExpiry) throw new BadRequestException('No OTP generated');
 
-    if (user.otp !== dto.otp) throw new BadRequestException("Invalid OTP");
+    if (user.otp !== dto.otp) throw new BadRequestException('Invalid OTP');
 
     if (user.otpExpiry < new Date()) {
       const newOtp = this.generateOtp();
@@ -204,7 +204,7 @@ export class AuthService {
       await this.emailService.sendOtpEmail(user.email, newOtp);
 
       return {
-        message: "OTP expired. A new OTP has been sent to your email.",
+        message: 'OTP expired. A new OTP has been sent to your email.',
         otpResent: true,
       };
     }
@@ -214,7 +214,7 @@ export class AuthService {
     user.otpExpiry = null;
     await this.userRepository.save(user);
 
-    return { message: "Account verified successfully.", verified: true };
+    return { message: 'Account verified successfully.', verified: true };
   }
 
   async login(dto: LoginDto) {
@@ -222,32 +222,32 @@ export class AuthService {
       where: { email: dto.email },
     });
 
-    if (!user) throw new NotFoundException("Invalid credentials");
+    if (!user) throw new NotFoundException('Invalid credentials');
 
     if (dto.firebaseId) {
       if (!user.firebaseId)
-        throw new UnauthorizedException("No Google Login exists for this account");
+        throw new UnauthorizedException('No Google Login exists for this account');
 
       if (user.firebaseId !== dto.firebaseId)
-        throw new UnauthorizedException("Invalid Google Login for this account");
+        throw new UnauthorizedException('Invalid Google Login for this account');
 
-      if (!user.verified) throw new UnauthorizedException("Account not verified");
+      if (!user.verified) throw new UnauthorizedException('Account not verified');
 
       const token = await this.buildAuthResponse(user);
       return { accessToken: token.accessToken, user };
     }
 
-    if (!dto.password) throw new BadRequestException("Password is required");
+    if (!dto.password) throw new BadRequestException('Password is required');
     if (!user.verified)
-      throw new UnauthorizedException("Account not verified. Please verify via OTP.");
+      throw new UnauthorizedException('Account not verified. Please verify via OTP.');
 
     if (!user.password)
       throw new UnauthorizedException(
-        "This account uses Firebase login. Please sign in with Google.",
+        'This account uses Firebase login. Please sign in with Google.',
       );
 
     const isPasswordValid = await bcrypt.compare(dto.password, user.password);
-    if (!isPasswordValid) throw new UnauthorizedException("Invalid credentials");
+    if (!isPasswordValid) throw new UnauthorizedException('Invalid credentials');
 
     const token = await this.buildAuthResponse(user);
     return { accessToken: token.accessToken, user };
@@ -257,7 +257,7 @@ export class AuthService {
     const user = await this.userRepository.findOne({
       where: { email: dto.email },
     });
-    if (!user) throw new NotFoundException("User not found");
+    if (!user) throw new NotFoundException('User not found');
 
     const otp = this.generateOtp();
     user.otp = otp;
@@ -265,7 +265,7 @@ export class AuthService {
     await this.userRepository.save(user);
 
     await this.emailService.sendOtpEmail(user.email, otp);
-    return { message: "OTP sent to your email for password reset." };
+    return { message: 'OTP sent to your email for password reset.' };
   }
 
   async resetPassword(dto: ResetPasswordDto) {
@@ -273,10 +273,10 @@ export class AuthService {
       where: { email: dto.email },
     });
 
-    if (!user) throw new NotFoundException("User not found");
-    if (user.otp !== dto.otp) throw new BadRequestException("Invalid OTP");
+    if (!user) throw new NotFoundException('User not found');
+    if (user.otp !== dto.otp) throw new BadRequestException('Invalid OTP');
     if (user.otpExpiry ? user.otpExpiry < new Date() : false)
-      throw new BadRequestException("OTP expired");
+      throw new BadRequestException('OTP expired');
 
     const hashedPassword = await bcrypt.hash(dto.newPassword, 10);
     user.otp = null;
@@ -284,7 +284,7 @@ export class AuthService {
     user.password = hashedPassword;
     await this.userRepository.save(user);
 
-    return { message: "Password reset successful." };
+    return { message: 'Password reset successful.' };
   }
 
   async getProfile(userId: number) {
@@ -302,13 +302,13 @@ export class AuthService {
       },
     });
 
-    if (!user) throw new NotFoundException("User not found");
+    if (!user) throw new NotFoundException('User not found');
     return user;
   }
 
   async updateProfile(userId: number, dto: UpdateProfileDto) {
     const user = await this.userRepository.findOne({ where: { id: userId } });
-    if (!user) throw new NotFoundException("User not found");
+    if (!user) throw new NotFoundException('User not found');
 
     if (dto.name !== undefined) user.name = dto.name;
     if (dto.profileImage !== undefined) user.profileImage = dto.profileImage;
@@ -320,7 +320,7 @@ export class AuthService {
       });
 
       if (existing && existing.id !== user.id) {
-        throw new ConflictException("CNIC is already registered.");
+        throw new ConflictException('CNIC is already registered.');
       }
 
       user.cnic = dto.cnic;

@@ -6,30 +6,30 @@ import {
   OnGatewayDisconnect,
   MessageBody,
   ConnectedSocket,
-} from "@nestjs/websockets";
-import { Server, Socket } from "socket.io";
-import { Logger } from "@nestjs/common";
+} from '@nestjs/websockets';
+import { Server, Socket } from 'socket.io';
+import { Logger } from '@nestjs/common';
 
 interface RegisterData {
   userId: string;
-  role: "student" | "teacher";
+  role: 'student' | 'teacher';
   testId: number;
 }
 
 interface SignalData {
-  type: "offer" | "answer" | "ice-candidate";
+  type: 'offer' | 'answer' | 'ice-candidate';
   data: any;
   from: string;
   to: string;
   testId: number;
-  role: "student" | "teacher";
+  role: 'student' | 'teacher';
 }
 
 interface StreamRequest {
   studentId: string;
   teacherId: string;
   testId: number;
-  streamType?: "webcam" | "screen";
+  streamType?: 'webcam' | 'screen';
 }
 
 interface StreamSession {
@@ -38,14 +38,14 @@ interface StreamSession {
   testId: number;
   studentSocketId: string;
   teacherSocketId: string;
-  streamType: "webcam" | "screen";
+  streamType: 'webcam' | 'screen';
   startedAt: Date;
 }
 
 @WebSocketGateway({
-  namespace: "/streaming",
+  namespace: '/streaming',
   cors: {
-    origin: "http://localhost:3000",
+    origin: true,
     credentials: true,
   },
 })
@@ -57,7 +57,7 @@ export class StreamingGateway implements OnGatewayConnection, OnGatewayDisconnec
   private activeSessions = new Map<string, StreamSession>();
   private connectedUsers = new Map<
     string,
-    { socketId: string; role: "student" | "teacher"; testId: number }
+    { socketId: string; role: 'student' | 'teacher'; testId: number }
   >();
   private socketToUser = new Map<string, string>();
   // Latest proctoring data per student for late-joining teachers
@@ -80,7 +80,7 @@ export class StreamingGateway implements OnGatewayConnection, OnGatewayDisconnec
     this.cleanupSessionsBySocketId(client.id);
   }
 
-  @SubscribeMessage("register")
+  @SubscribeMessage('register')
   handleRegister(@MessageBody() data: RegisterData, @ConnectedSocket() client: Socket) {
     const { userId, role, testId } = data;
     this.connectedUsers.set(userId, { socketId: client.id, role, testId });
@@ -88,12 +88,12 @@ export class StreamingGateway implements OnGatewayConnection, OnGatewayDisconnec
     this.logger.log(`Registered: ${userId} as ${role} for test ${testId} (${client.id})`);
     client.join(`test-${testId}`);
     client.join(`${role}-${testId}`);
-    client.emit("registered", { success: true, socketId: client.id });
+    client.emit('registered', { success: true, socketId: client.id });
   }
 
-  @SubscribeMessage("start-stream")
+  @SubscribeMessage('start-stream')
   handleStartStream(@MessageBody() data: StreamRequest, @ConnectedSocket() client: Socket) {
-    const { studentId, teacherId, testId, streamType = "webcam" } = data;
+    const { studentId, teacherId, testId, streamType = 'webcam' } = data;
     this.logger.log(
       `Stream request from teacher ${teacherId} to student ${studentId} for test ${testId} (type: ${streamType})`,
     );
@@ -111,32 +111,32 @@ export class StreamingGateway implements OnGatewayConnection, OnGatewayDisconnec
       });
       this.server
         .to(studentUser.socketId)
-        .emit("stream-request", { teacherId, testId, streamType });
+        .emit('stream-request', { teacherId, testId, streamType });
       this.logger.log(
         `Stream request (${streamType}) sent to student ${studentId} at ${studentUser.socketId}`,
       );
-      client.emit("stream-started", { success: true, sessionKey, streamType });
+      client.emit('stream-started', { success: true, sessionKey, streamType });
     } else {
       this.logger.warn(`Student ${studentId} not connected for stream request`);
-      client.emit("error", { message: `Student ${studentId} is not connected` });
+      client.emit('error', { message: `Student ${studentId} is not connected` });
     }
   }
 
-  @SubscribeMessage("signal")
+  @SubscribeMessage('signal')
   handleSignal(@MessageBody() data: SignalData, @ConnectedSocket() client: Socket) {
     const { type, data: signalData, from, to, testId, role } = data;
     this.logger.log(`Signal ${type} from ${from} (${role}) to ${to} for test ${testId}`);
     const targetUser = this.connectedUsers.get(to);
     if (targetUser) {
-      this.server.to(targetUser.socketId).emit("signal", { type, data: signalData, from, testId });
+      this.server.to(targetUser.socketId).emit('signal', { type, data: signalData, from, testId });
       this.logger.log(`Signal sent to ${to} at ${targetUser.socketId}`);
     } else {
       this.logger.warn(`Target user ${to} not found for signal`);
-      client.emit("error", { message: `Target user ${to} is not connected` });
+      client.emit('error', { message: `Target user ${to} is not connected` });
     }
   }
 
-  @SubscribeMessage("stop-stream")
+  @SubscribeMessage('stop-stream')
   handleStopStream(@MessageBody() data: StreamRequest, @ConnectedSocket() client: Socket) {
     const { studentId, teacherId, testId } = data;
     const sessionKey = `${testId}-${studentId}-${teacherId}`;
@@ -146,13 +146,13 @@ export class StreamingGateway implements OnGatewayConnection, OnGatewayDisconnec
     );
     const studentUser = this.connectedUsers.get(studentId);
     if (studentUser) {
-      this.server.to(studentUser.socketId).emit("stream-stopped", { teacherId, testId });
+      this.server.to(studentUser.socketId).emit('stream-stopped', { teacherId, testId });
       this.logger.log(`Stop stream sent to student ${studentId} at ${studentUser.socketId}`);
     }
-    client.emit("stream-stopped", { success: true });
+    client.emit('stream-stopped', { success: true });
   }
 
-  @SubscribeMessage("get-active-sessions")
+  @SubscribeMessage('get-active-sessions')
   handleGetActiveSessions(
     @MessageBody() data: { testId: number },
     @ConnectedSocket() client: Socket,
@@ -161,12 +161,12 @@ export class StreamingGateway implements OnGatewayConnection, OnGatewayDisconnec
       (session) => session.testId === data.testId,
     );
 
-    client.emit("active-sessions", { sessions });
+    client.emit('active-sessions', { sessions });
   }
 
   // ─── AI Proctoring Relay ─────────────────────────────────────────────────
 
-  @SubscribeMessage("proctoring_update")
+  @SubscribeMessage('proctoring_update')
   handleProctoringUpdate(
     @MessageBody()
     data: {
@@ -176,6 +176,18 @@ export class StreamingGateway implements OnGatewayConnection, OnGatewayDisconnec
       gazeDelta: { x: number; y: number };
       headPose: { pitch: number; yaw: number };
       faceDetected: boolean;
+      detectedObjects?: {
+        label: string;
+        score: number;
+        bbox?: { x: number; y: number; width: number; height: number };
+      }[];
+      suspiciousObjects?: {
+        label: string;
+        score: number;
+        bbox?: { x: number; y: number; width: number; height: number };
+      }[];
+      personCount?: number;
+      extraPeopleCount?: number;
       timestamp: number;
     },
     @ConnectedSocket() client: Socket,
@@ -187,10 +199,10 @@ export class StreamingGateway implements OnGatewayConnection, OnGatewayDisconnec
     this.latestProctoring.set(data.studentId, data);
 
     // Broadcast to all teachers in the same test room
-    this.server.to(`teacher-${user.testId}`).emit("proctoring_data", data);
+    this.server.to(`teacher-${user.testId}`).emit('proctoring_data', data);
   }
 
-  @SubscribeMessage("get-proctoring-snapshot")
+  @SubscribeMessage('get-proctoring-snapshot')
   handleGetProctoringSnapshot(
     @MessageBody() data: { testId: number },
     @ConnectedSocket() client: Socket,
@@ -203,7 +215,7 @@ export class StreamingGateway implements OnGatewayConnection, OnGatewayDisconnec
         snapshot.push(procData);
       }
     }
-    client.emit("proctoring_snapshot", { students: snapshot });
+    client.emit('proctoring_snapshot', { students: snapshot });
   }
 
   private cleanupSessionsBySocketId(socketId: string) {
@@ -218,8 +230,8 @@ export class StreamingGateway implements OnGatewayConnection, OnGatewayDisconnec
           session.studentSocketId === socketId ? session.teacherSocketId : session.studentSocketId;
 
         if (otherSocketId) {
-          this.server.to(otherSocketId).emit("stream-stopped", {
-            reason: "peer-disconnected",
+          this.server.to(otherSocketId).emit('stream-stopped', {
+            reason: 'peer-disconnected',
           });
         }
       }

@@ -9,18 +9,18 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   PrimaryGeneratedColumn,
-} from "typeorm";
-import { User, Test, Answer, ProctoringLog } from ".";
+} from 'typeorm';
+import { User, Test, Answer, ProctoringLog } from '.';
 
 export enum SubmissionStatus {
-  IN_PROGRESS = "IN_PROGRESS",
-  SUBMITTED = "SUBMITTED",
-  GRADED = "GRADED",
+  IN_PROGRESS = 'IN_PROGRESS',
+  SUBMITTED = 'SUBMITTED',
+  GRADED = 'GRADED',
 }
 
-@Entity("submission")
-@Index(["testId"])
-@Unique(["userId", "testId"])
+@Entity('submission')
+@Index(['testId'])
+@Unique(['userId', 'testId'])
 export class Submission {
   @PrimaryGeneratedColumn()
   id: number;
@@ -32,19 +32,19 @@ export class Submission {
   testId: number;
 
   @Column({
-    type: "enum",
+    type: 'enum',
     enum: SubmissionStatus,
     default: SubmissionStatus.IN_PROGRESS,
   })
   status: SubmissionStatus;
 
-  @Column({ type: "datetime" })
+  @Column({ type: 'datetime' })
   startedAt: Date;
 
-  @Column({ type: "datetime", nullable: true })
+  @Column({ type: 'datetime', nullable: true })
   submittedAt: Date | null;
 
-  @Column({ type: "datetime", nullable: true })
+  @Column({ type: 'datetime', nullable: true })
   gradedAt: Date | null;
 
   @CreateDateColumn()
@@ -54,15 +54,15 @@ export class Submission {
   updatedAt: Date;
 
   @ManyToOne(() => User, (user) => user.submissions, {
-    onDelete: "CASCADE",
+    onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: "userId" })
+  @JoinColumn({ name: 'userId' })
   user: User;
 
   @ManyToOne(() => Test, (test) => test.submissions, {
-    onDelete: "CASCADE",
+    onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: "testId" })
+  @JoinColumn({ name: 'testId' })
   test: Test;
 
   @OneToMany(() => Answer, (answer) => answer.submission)

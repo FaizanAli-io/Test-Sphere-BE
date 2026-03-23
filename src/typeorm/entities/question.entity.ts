@@ -6,19 +6,19 @@ import {
   OneToMany,
   JoinColumn,
   PrimaryGeneratedColumn,
-} from "typeorm";
-import { Test, Answer, QuestionPool } from ".";
+} from 'typeorm';
+import { Test, Answer, QuestionPool } from '.';
 
 export enum QuestionType {
-  MULTIPLE_CHOICE = "MULTIPLE_CHOICE",
-  SHORT_ANSWER = "SHORT_ANSWER",
-  LONG_ANSWER = "LONG_ANSWER",
-  TRUE_FALSE = "TRUE_FALSE",
+  MULTIPLE_CHOICE = 'MULTIPLE_CHOICE',
+  SHORT_ANSWER = 'SHORT_ANSWER',
+  LONG_ANSWER = 'LONG_ANSWER',
+  TRUE_FALSE = 'TRUE_FALSE',
 }
 
-@Entity("question")
-@Index(["testId"])
-@Index(["questionPoolId"])
+@Entity('question')
+@Index(['testId'])
+@Index(['questionPoolId'])
 export class Question {
   @PrimaryGeneratedColumn()
   id: number;
@@ -26,40 +26,40 @@ export class Question {
   @Column()
   testId: number;
 
-  @Column({ type: "varchar", length: 1000 })
+  @Column({ type: 'varchar', length: 1000 })
   text: string;
 
   @Column({
-    type: "enum",
+    type: 'enum',
     enum: QuestionType,
   })
   type: QuestionType;
 
-  @Column({ type: "json", nullable: true })
+  @Column({ type: 'json', nullable: true })
   options: any;
 
-  @Column({ type: "int", nullable: true })
+  @Column({ type: 'int', nullable: true })
   correctAnswer: number | null;
 
-  @Column({ type: "int", default: 1 })
+  @Column({ type: 'int', default: 1 })
   maxMarks: number;
 
-  @Column({ type: "varchar", length: 255, nullable: true })
+  @Column({ type: 'varchar', length: 255, nullable: true })
   image: string | null;
 
   @ManyToOne(() => Test, (test) => test.questions, {
-    onDelete: "CASCADE",
+    onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: "testId" })
+  @JoinColumn({ name: 'testId' })
   test: Test;
 
   @Column({ nullable: true })
   questionPoolId: number | null;
 
   @ManyToOne(() => QuestionPool, (pool: QuestionPool) => pool.questions, {
-    onDelete: "SET NULL",
+    onDelete: 'SET NULL',
   })
-  @JoinColumn({ name: "questionPoolId" })
+  @JoinColumn({ name: 'questionPoolId' })
   questionPool: QuestionPool;
 
   @OneToMany(() => Answer, (answer) => answer.question)

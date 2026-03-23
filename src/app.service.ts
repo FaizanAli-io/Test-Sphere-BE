@@ -1,7 +1,7 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { User } from "./typeorm/entities";
+import { Injectable, Logger } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from './typeorm/entities';
 
 @Injectable()
 export class AppService {
@@ -151,17 +151,17 @@ export class AppService {
   async healthCheck() {
     try {
       // Test database connection
-      await this.userRepository.query("SELECT 1");
+      await this.userRepository.query('SELECT 1');
 
       return {
-        status: "OK",
-        message: "API is healthy!",
+        status: 'OK',
+        message: 'API is healthy!',
       };
     } catch (error) {
-      this.logger.error("Health check failed:", (error as Error)?.message);
+      this.logger.error('Health check failed:', (error as Error)?.message);
       return {
-        status: "ERROR",
-        message: "API is not healthy.",
+        status: 'ERROR',
+        message: 'API is not healthy.',
       };
     }
   }

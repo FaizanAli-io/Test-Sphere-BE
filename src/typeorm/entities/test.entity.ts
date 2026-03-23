@@ -7,16 +7,16 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   PrimaryGeneratedColumn,
-} from "typeorm";
-import { Class, Question, Submission, QuestionPool } from ".";
+} from 'typeorm';
+import { Class, Question, Submission, QuestionPool } from '.';
 
 export enum TestStatus {
-  ACTIVE = "ACTIVE",
-  CLOSED = "CLOSED",
-  DRAFT = "DRAFT",
+  ACTIVE = 'ACTIVE',
+  CLOSED = 'CLOSED',
+  DRAFT = 'DRAFT',
 }
 
-@Entity("test")
+@Entity('test')
 export class Test {
   @PrimaryGeneratedColumn()
   id: number;
@@ -24,29 +24,29 @@ export class Test {
   @Column()
   classId: number;
 
-  @Column({ type: "varchar", length: 255 })
+  @Column({ type: 'varchar', length: 255 })
   title: string;
 
-  @Column({ type: "text", nullable: true })
+  @Column({ type: 'text', nullable: true })
   description: string | null;
 
   @Column()
   duration: number;
 
-  @Column({ type: "datetime" })
+  @Column({ type: 'datetime' })
   startAt: Date;
 
-  @Column({ type: "datetime" })
+  @Column({ type: 'datetime' })
   endAt: Date;
 
   @Column({
-    type: "enum",
+    type: 'enum',
     enum: TestStatus,
     default: TestStatus.DRAFT,
   })
   status: TestStatus;
 
-  @Column({ type: "json", nullable: true })
+  @Column({ type: 'json', nullable: true })
   config: any;
 
   @CreateDateColumn()
@@ -56,9 +56,9 @@ export class Test {
   updatedAt: Date;
 
   @ManyToOne(() => Class, (cls) => cls.tests, {
-    onDelete: "CASCADE",
+    onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: "classId" })
+  @JoinColumn({ name: 'classId' })
   class: Class;
 
   @OneToMany(() => QuestionPool, (pool: QuestionPool) => pool.test)

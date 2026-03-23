@@ -5,10 +5,10 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
-} from "@nestjs/common";
-import { Repository } from "typeorm";
-import { Reflector } from "@nestjs/core";
-import { InjectRepository } from "@nestjs/typeorm";
+} from '@nestjs/common';
+import { Repository } from 'typeorm';
+import { Reflector } from '@nestjs/core';
+import { InjectRepository } from '@nestjs/typeorm';
 import {
   Test,
   Question,
@@ -17,8 +17,8 @@ import {
   ClassTeacher,
   UserRole,
   ClassTeacherRole,
-} from "../../typeorm/entities";
-import { GuardMode, CLASS_ROLE_KEY } from "../decorators/class-roles.decorator";
+} from '../../typeorm/entities';
+import { GuardMode, CLASS_ROLE_KEY } from '../decorators/class-roles.decorator';
 
 const ROLE_PRIORITY: Record<ClassTeacherRole, number> = {
   [ClassTeacherRole.OWNER]: 3,
@@ -73,17 +73,17 @@ export class ClassRoleGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
     const user = request.user;
-    if (!user) throw new ForbiddenException("Unauthenticated request");
+    if (!user) throw new ForbiddenException('Unauthenticated request');
     if (user.role !== UserRole.TEACHER)
-      throw new ForbiddenException("Only teachers can access class-level permissions");
+      throw new ForbiddenException('Only teachers can access class-level permissions');
 
-    const mode: GuardMode = meta.mode || "class";
+    const mode: GuardMode = meta.mode || 'class';
 
     let classId: number;
 
-    if (mode === "class") {
+    if (mode === 'class') {
       classId = Number(request.params?.classId ?? request.body?.classId);
-      if (!classId) throw new BadRequestException("Class ID is required");
+      if (!classId) throw new BadRequestException('Class ID is required');
     } else {
       const repoMap: Record<string, Repository<any>> = {
         test: this.testRepository,
@@ -93,10 +93,10 @@ export class ClassRoleGuard implements CanActivate {
       };
 
       const paramKeyMap: Record<string, string> = {
-        test: "testId",
-        question: "questionId",
-        submission: "submissionId",
-        questionPool: "poolId",
+        test: 'testId',
+        question: 'questionId',
+        submission: 'submissionId',
+        questionPool: 'poolId',
       };
 
       const entityId = request.params[paramKeyMap[mode]];
@@ -114,10 +114,10 @@ export class ClassRoleGuard implements CanActivate {
       select: { role: true },
     });
 
-    if (!record) throw new ForbiddenException("No access to this class");
+    if (!record) throw new ForbiddenException('No access to this class');
 
     if (ROLE_PRIORITY[record.role] < ROLE_PRIORITY[meta.role])
-      throw new ForbiddenException("Insufficient permissions for this class");
+      throw new ForbiddenException('Insufficient permissions for this class');
 
     return true;
   }

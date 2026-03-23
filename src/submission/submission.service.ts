@@ -3,9 +3,9 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
-} from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, DataSource } from "typeorm";
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, DataSource } from 'typeorm';
 import {
   Test,
   Question,
@@ -16,10 +16,10 @@ import {
   QuestionType,
   GradingStatus,
   SubmissionStatus,
-} from "../typeorm/entities";
+} from '../typeorm/entities';
 
-import { SubmitTestDto, StartSubmissionDto, GradeSubmissionDto } from "./submission.dto";
-import { ProctoringLogService } from "../procotoring-log/procotoring-log.service";
+import { SubmitTestDto, StartSubmissionDto, GradeSubmissionDto } from './submission.dto';
+import { ProctoringLogService } from '../procotoring-log/procotoring-log.service';
 
 @Injectable()
 export class SubmissionService {
@@ -42,8 +42,8 @@ export class SubmissionService {
       select: { id: true, startAt: true, endAt: true, status: true },
     });
 
-    if (!test) throw new NotFoundException("Test not found");
-    if (test.status !== TestStatus.ACTIVE) throw new BadRequestException("Test is not active");
+    if (!test) throw new NotFoundException('Test not found');
+    if (test.status !== TestStatus.ACTIVE) throw new BadRequestException('Test is not active');
 
     const now = new Date();
 
@@ -62,7 +62,7 @@ export class SubmissionService {
     const existing = await this.submissionRepository.findOne({
       where: { userId, testId: dto.testId },
     });
-    if (existing) throw new BadRequestException("Submission already exists for this test");
+    if (existing) throw new BadRequestException('Submission already exists for this test');
 
     const submission = this.submissionRepository.create({
       userId,
@@ -80,7 +80,7 @@ export class SubmissionService {
       relations: { test: true },
       select: { id: true, test: { id: true } },
     });
-    if (!submission) throw new NotFoundException("Active submission not found");
+    if (!submission) throw new NotFoundException('Active submission not found');
 
     const questions = await this.questionRepository.find({
       where: { testId: submission.test.id },
@@ -168,7 +168,7 @@ export class SubmissionService {
 
   async updateSubmissionStatus(submissionId: number, status: SubmissionStatus) {
     const submission = await this.submissionRepository.findOne({ where: { id: submissionId } });
-    if (!submission) throw new NotFoundException("Submission not found");
+    if (!submission) throw new NotFoundException('Submission not found');
 
     submission.status = status;
     if (status === SubmissionStatus.GRADED) submission.gradedAt = new Date();
@@ -184,7 +184,7 @@ export class SubmissionService {
       relations: { class: true },
     });
 
-    if (!test) throw new NotFoundException("Test not found");
+    if (!test) throw new NotFoundException('Test not found');
 
     return this.submissionRepository.find({
       where: { testId },
@@ -193,7 +193,7 @@ export class SubmissionService {
         test: { class: true },
         answers: { question: true },
       },
-      order: { submittedAt: "ASC" },
+      order: { submittedAt: 'ASC' },
     });
   }
 
@@ -201,7 +201,7 @@ export class SubmissionService {
     const exists = await this.userRepository.findOne({
       where: { id: studentId },
     });
-    if (!exists) throw new NotFoundException("Student not found");
+    if (!exists) throw new NotFoundException('Student not found');
 
     return this.submissionRepository.find({
       where: { userId: studentId },
@@ -210,7 +210,7 @@ export class SubmissionService {
         user: true,
         test: { class: true },
       },
-      order: { submittedAt: "DESC" },
+      order: { submittedAt: 'DESC' },
     });
   }
 
@@ -249,7 +249,7 @@ export class SubmissionService {
         test: { class: true },
       },
     });
-    if (!submission) throw new NotFoundException("Submission not found");
+    if (!submission) throw new NotFoundException('Submission not found');
     return submission;
   }
 }

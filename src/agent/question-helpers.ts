@@ -1,8 +1,8 @@
-import OpenAI from "openai";
+import OpenAI from 'openai';
 
 export interface GeneratedQuestion {
   text: string;
-  type: "MULTIPLE_CHOICE" | "TRUE_FALSE" | "SHORT_ANSWER" | "LONG_ANSWER";
+  type: 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'SHORT_ANSWER' | 'LONG_ANSWER';
   options?: string[];
   correctAnswer?: number;
   maxMarks?: number;
@@ -13,14 +13,14 @@ export async function generateStructuredQuestions(
   apiKey: string,
   prompt: string,
 ): Promise<GeneratedQuestion[]> {
-  const client = new OpenAI({ apiKey, baseURL: "https://openrouter.ai/api/v1" });
+  const client = new OpenAI({ apiKey, baseURL: 'https://openrouter.ai/api/v1' });
 
   try {
     const response = await client.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: 'gpt-4o-mini',
       messages: [
         {
-          role: "system",
+          role: 'system',
           content: `You are a professional academic question generator. 
           Follow the user prompt exactly regarding count and topic.
           
@@ -31,42 +31,42 @@ export async function generateStructuredQuestions(
           4. All JSON must strictly follow the provided schema.`,
         },
         {
-          role: "user",
+          role: 'user',
           content: prompt,
         },
       ],
       response_format: {
-        type: "json_schema",
+        type: 'json_schema',
         json_schema: {
-          name: "generated_questions",
+          name: 'generated_questions',
           strict: true,
           schema: {
-            type: "object",
+            type: 'object',
             properties: {
               questions: {
-                type: "array",
+                type: 'array',
                 items: {
-                  type: "object",
+                  type: 'object',
                   properties: {
-                    text: { type: "string" },
+                    text: { type: 'string' },
                     type: {
-                      type: "string",
-                      enum: ["MULTIPLE_CHOICE", "TRUE_FALSE", "SHORT_ANSWER", "LONG_ANSWER"],
+                      type: 'string',
+                      enum: ['MULTIPLE_CHOICE', 'TRUE_FALSE', 'SHORT_ANSWER', 'LONG_ANSWER'],
                     },
                     options: {
-                      type: ["array", "null"],
-                      items: { type: "string" },
+                      type: ['array', 'null'],
+                      items: { type: 'string' },
                     },
-                    correctAnswer: { type: ["integer", "null"] },
-                    maxMarks: { type: "integer" },
-                    image: { type: "string" },
+                    correctAnswer: { type: ['integer', 'null'] },
+                    maxMarks: { type: 'integer' },
+                    image: { type: 'string' },
                   },
-                  required: ["text", "type", "options", "correctAnswer", "maxMarks", "image"],
+                  required: ['text', 'type', 'options', 'correctAnswer', 'maxMarks', 'image'],
                   additionalProperties: false,
                 },
               },
             },
-            required: ["questions"],
+            required: ['questions'],
             additionalProperties: false,
           },
         },
@@ -74,25 +74,25 @@ export async function generateStructuredQuestions(
     });
 
     const content = response.choices[0].message.content;
-    if (!content) throw new Error("AI returned an empty response.");
+    if (!content) throw new Error('AI returned an empty response.');
 
     const parsed = JSON.parse(content) as { questions: GeneratedQuestion[] };
     return processQuestions(parsed.questions);
   } catch (error) {
-    console.error("Failed to generate questions:", error);
-    throw new Error("Validation failed for generated questions.");
+    console.error('Failed to generate questions:', error);
+    throw new Error('Validation failed for generated questions.');
   }
 }
 
 export function processQuestions(questions: GeneratedQuestion[]): GeneratedQuestion[] {
-  const typeOrder = ["MULTIPLE_CHOICE", "TRUE_FALSE", "SHORT_ANSWER", "LONG_ANSWER"];
+  const typeOrder = ['MULTIPLE_CHOICE', 'TRUE_FALSE', 'SHORT_ANSWER', 'LONG_ANSWER'];
 
   const sortedQuestions = [...questions].sort((a, b) => {
     return typeOrder.indexOf(a.type) - typeOrder.indexOf(b.type);
   });
 
   return sortedQuestions.map((q) => {
-    return q.type === "MULTIPLE_CHOICE" && q.options && q.correctAnswer !== undefined
+    return q.type === 'MULTIPLE_CHOICE' && q.options && q.correctAnswer !== undefined
       ? shuffleMCQ(q)
       : q;
   });

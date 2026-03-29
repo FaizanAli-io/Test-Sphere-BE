@@ -22,7 +22,7 @@ async function bootstrap() {
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Test Sphere API')
     .setDescription('API Documentation for Test Sphere - An AI-Powered Test Management System')
-    .setVersion('1.0')
+    .setVersion('1.0.3.29')
     .addBearerAuth()
     .build();
 
@@ -37,7 +37,7 @@ async function bootstrap() {
   });
 
   const configService = app.get<ConfigService>(ConfigService);
-  const port = configService.get('PORT') || 3000;
+  const port = configService.get('PORT') || 5000;
   await app.listen(port, '0.0.0.0');
 }
 void bootstrap();

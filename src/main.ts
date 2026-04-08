@@ -21,8 +21,8 @@ async function bootstrap() {
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Test Sphere API')
-    .setDescription('API Documentation for Test Sphere - An AI-Powered Test Management System')
-    .setVersion('1.0.3.29')
+    .setDescription('API Documentation for Test Sphere')
+    .setVersion('1.0.4.8.0')
     .addBearerAuth()
     .build();
 

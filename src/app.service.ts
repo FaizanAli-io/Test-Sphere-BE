@@ -1,7 +1,17 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { Repository } from 'typeorm';
+import { ConfigService } from './config/config.service';
 import { User } from './typeorm/entities';
+
+const execFileAsync = promisify(execFile);
 
 @Injectable()
 export class AppService {
@@ -9,6 +19,7 @@ export class AppService {
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    private readonly configService: ConfigService,
   ) {}
   getHello(): string {
     return `
@@ -148,9 +159,43 @@ export class AppService {
     `;
   }
 
+  async deploy(password: string) {
+    const configuredPassword = this.configService.get<string>('DEPLOY_PASSWORD');
+
+    if (!configuredPassword) {
+      throw new InternalServerErrorException('Deploy password is not configured.');
+    }
+
+    if (!this.isValidDeployPassword(password, configuredPassword)) {
+      throw new UnauthorizedException('Invalid deploy password.');
+    }
+
+    try {
+      const workingDirectory = process.cwd();
+      const { stdout, stderr } = await execFileAsync('git', ['pull', 'origin', 'main'], {
+        cwd: workingDirectory,
+        env: {
+          ...process.env,
+          GIT_TERMINAL_PROMPT: '0',
+        },
+        maxBuffer: 1024 * 1024,
+      });
+
+      return {
+        status: 'OK',
+        message: 'Deployment pull completed successfully.',
+        output: stdout.trim() || stderr.trim() || 'Git pull completed.',
+        workingDirectory,
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown deployment error';
+      this.logger.error(`Deploy pull failed: ${errorMessage}`);
+      throw new InternalServerErrorException('Deployment pull failed.');
+    }
+  }
+
   async healthCheck() {
     try {
-      // Test database connection
       await this.userRepository.query('SELECT 1');
 
       return {
@@ -164,5 +209,13 @@ export class AppService {
         message: 'API is not healthy.',
       };
     }
+  }
+
+  private isValidDeployPassword(candidate: string, configuredPassword: string): boolean {
+    if (candidate.length !== configuredPassword.length) {
+      return false;
+    }
+
+    return Buffer.from(candidate).equals(Buffer.from(configuredPassword));
   }
 }
